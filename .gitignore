@@ -8,3 +8,5 @@ key.py
 /__pycache___
 pyvenv.cfg
 .DS_Store
+util/__pycache__/key.cpython-39.pyc
+__pycache__/key.cpython-39.pyc
