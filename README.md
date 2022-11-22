@@ -55,4 +55,4 @@ This model was trained to recommend a subset of You can find the details on trai
 
 	> API Key is necessary to obtain longitude / latitude from listing street address. You can sign up in the [link](https://developers.google.com/maps/documentation/geolocation/overview). $300 credit is provided to First-time user, which is equivalent to about 6,000 refresh in the current set-up.
 
-- Run the app with `streamlit run streamlit_app.py` in the `streamlit-example` directory
+- Run the app with `streamlit run app.py` in the `streamlit-example` directory
