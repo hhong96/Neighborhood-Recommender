@@ -4,7 +4,8 @@ import pandas as pd
 import streamlit as st
 import pymysql
 import googlemaps
-import key
+import sys
+import util.key as key
 
 pd.set_option('display.max_columns', None)
 
