@@ -1,2 +1,8 @@
 
 key.py
+/bin
+/etc
+/lib
+/include
+/share
+pyvenv.cfg

@@ -33,11 +33,11 @@ This model was trained to recommend a subset of You can find the details on trai
 
 - Create a virtual environment for working with Python
 
-- `python3 -m venv cse6242-team110`
+- `python3 -m venv neighborhood-recommender`
 
 - Activate your virtual environment
 
-- `cd cse6242-team110 && source bin/activate`
+- `cd neighborhood-recommender && source bin/activate`
 
 - Within the activated virtual environment install dependencies
 
