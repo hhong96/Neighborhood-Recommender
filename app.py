@@ -92,14 +92,15 @@ def main():
       and centrality_index_dummy = '{}'
       """.format(user_cbsa, home_type_param, income_param, bedroom_param, age_param, price_param, square_feet_param, year_built_param, family_param, centrality_param)
       
-      if data_read(query)['pred'].values[0] != None:
-        zipcode = data_read(query)['pred'].values[0]
-      else:
+      # df = data_read(query)['pred']
+      # df
+      if data_read(query)['pred'].shape[0] == 0:
+        st.markdown("<div2><h2 style='text-align: center;'> no data yet :( this is my zip code.</h2><div2>", unsafe_allow_html=True)
         zipcode = 22314
+      else:
+        zipcode = data_read(query)['pred'].values[0]
+        st.markdown("<div2><h2 style='text-align: center;'>We recommend you live in zipcode " + str(zipcode) + "!</h2><div2>", unsafe_allow_html=True)
         
-      # %%
-      st.markdown("<div2><h2 style='text-align: center;'>We recommend you live in zipcode " + str(zipcode) + "!</h2><div2>", unsafe_allow_html=True)
-      
       ls = data_read("select * from listing where zipcode = {} limit 10".format(zipcode))
       ls['address'] = ls.apply(lambda x: '%s, %s, %s, %s' % (x['streetAddress'], x['city'], x['state'], x['zipcode']), axis=1)
       ls['lat'] = 0
@@ -117,7 +118,7 @@ def main():
       with st.container():
         st.map(ls[['lat', 'lon']])
     
-  
+    
 if __name__ == '__main__':
 	main()
  
