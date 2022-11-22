@@ -43,7 +43,15 @@ This model was trained to recommend a subset of You can find the details on trai
 
 - `pip3 install -r requirements.txt`
 
-- Place separately provided key.py file in the main folder and fill api_key variable with your Google Geolocation API Key
+- Create a key.py file inside util folder and fill database connection string and api_key variable with your Google Geolocation API Key.
+  ```
+  host=""
+  user=""
+  password=""
+  port=""
+  database=""
+  api_key=""
+  ```
 
 	> API Key is necessary to obtain longitude / latitude from listing street address. You can sign up in the [link](https://developers.google.com/maps/documentation/geolocation/overview). $300 credit is provided to First-time user, which is equivalent to about 6,000 refresh in the current set-up.
 
