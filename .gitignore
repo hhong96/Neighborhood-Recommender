@@ -6,3 +6,4 @@ key.py
 /include
 /share
 pyvenv.cfg
+.DS_Store
