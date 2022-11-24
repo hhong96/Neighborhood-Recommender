@@ -16,6 +16,7 @@ executing==1.2.0
 gitdb==4.0.9
 GitPython==3.1.29
 googlemaps==4.7.2
+greenlet==2.0.1
 idna==3.4
 importlib-metadata==5.0.0
 ipykernel==6.17.1
@@ -57,6 +58,7 @@ rich==12.6.0
 semver==2.13.0
 six==1.16.0
 smmap==5.0.0
+SQLAlchemy==1.4.44
 stack-data==0.6.1
 streamlit==1.15.1
 toml==0.10.2
