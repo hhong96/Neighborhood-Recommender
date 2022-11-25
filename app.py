@@ -4,9 +4,6 @@ from sqlalchemy import create_engine
 import googlemaps
 import util.key as key
 
-snippet = embed.embed_snippet(views=map)
-html = embed.html_template.format(title="", snippet=snippet)
-components.html(html, height=500,width=500)
 
 st.set_page_config(page_title="Neighborhood Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
 
