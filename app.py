@@ -127,7 +127,7 @@ def analysis_rank(zipcode, cbsa):
             rank_df = rank_df[rank_df['Years'] == rank_df['Years'].unique()[j]]
             rank_df['rank'] = rank_df[rename[i]].rank(ascending=False)
             
-            rank = int(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
+            rank = float(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
             title.append(f'{rename[i]} Ranking: your neighborhood {zipcode} is {p.ordinal(rank)} place out of {all} neighborhoods in Metropolitan Statistical Area {cbsa} in ' + df_analysis['Years'].unique()[j]
             )
         
@@ -195,6 +195,45 @@ def analysis_2(zipcode):
   return df
 
 
+# analysis 2_2
+@st.experimental_memo
+def analysis_2_2(cbsa):
+  query = """
+    select
+        cf.cbsa,
+        round(cf.percent_female_final,2) as pct_f,
+        round(cf.percent_male_final,2) as pct_m,
+        round(cf.percent_family_households_final,2) as pct_fam,
+        round(cf.percent_family_households_final,2) as pct_non_fam,
+        cf.majority_age_group_final as val_age,
+        cf.majority_industry_final as val_ind,
+        round(cf.unemployment_rate_final,2) as pct_unemp,
+        round(cf.mean_travel_time_to_work_minutes_final,2) as ind_com,
+        round(ae.nat_walk_ind,2) as ind_walk,
+        round(ae.traffic_dens_ind,2) as ind_trf,
+        yp.average_score as ind_yelp,
+        yp.term_ratio as pct_yelp,
+        round(avg(zlld.bedrooms_final),2) as avg_bd,
+        round(avg(zlld.bathrooms_final),2) as avg_bt,
+        round(avg(zlld.year_built_final),2) as avg_y,
+        round(avg(zlld.SqFt_final),2) as avg_spft,
+        round(avg(zlld.price),2) as avg_price,
+        round(cf.mean_household_income_dollars_final) as avg_inc,
+        round(avg(lef.elemntary_rating_final), 2) as el,
+        round(avg(lef.middle_rating_final), 2) as md,
+        round(avg(lef.high_rating_final), 2) as hi
+
+    from census_final_2020  cf
+        inner join yelp_enriched yp on cf.zipcode = yp.zipcode
+        inner join accessibility_enriched ae on yp.zipcode = ae.zipcode
+        inner join zipcode_level_listing_detail zlld on yp.zipcode = zlld.zipcode
+        inner join listings_enriched_final lef on cf.zipcode = lef.zipcode
+
+    where cf.cbsa = {cbsa}
+    """.format(cbsa = cbsa)
+  df = pd.read_sql(query, engine)
+  
+  return df
 
 # analysis 3
 @st.experimental_memo
@@ -219,6 +258,9 @@ bd, cent, edu, fam, home, inc, sch, sqft, year = get_dd()
 ### initiate sesison states that will be used over steps
 if 'cbsa' not in st.session_state:
   st.session_state['cbsa'] = 0
+
+if 'cbsa_title' not in st.session_state:
+  st.session_state['cbsa_title'] = 0
     
 if 'user_input' not in st.session_state:
   st.session_state['user_input'] = 0
@@ -236,6 +278,7 @@ with st.sidebar.form("other_form"):
     ##### map cbsa label to bucket
     user_cbsa = cbsa[cbsa['cbsatitle'] == cbsa_param]['cbsa'].values[0]
     user_cbsa = str(user_cbsa)
+    st.session_state['cbsa_title'] = cbsa_param
     st.session_state['cbsa'] = user_cbsa
     
     ##### get price, age dropdown options based on cbsa user input
@@ -302,32 +345,36 @@ tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])
 with tab1: 
   if st.session_state['zipcode'] != 0:
     
+    st.info(f"Major Neighborhood Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
       a2 = analysis_2(st.session_state['zipcode'])
+      a2_2 = analysis_2_2(st.session_state['cbsa'])
       col1, col2, col3, col4 = st.columns(4)
       
       with col1:
         st.metric("Majority Age Group", a2['val_age'][0].replace('_', ' ').title())
-        st.metric("Walkability Score", a2['ind_walk'][0])
+        st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
         
       with col2:
-        st.metric("Avg. Household Income", "$" + str(a2['avg_inc'][0]))
-        st.metric("Traffic Density", a2['ind_trf'][0])
+        print(a2['avg_inc'][0])
+        print(a2_2['avg_inc'][0])
+        st.metric("Avg. Household Income", a2['avg_inc'][0], delta=float(a2['avg_inc'][0] - a2_2['avg_inc'][0]))
+        st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse")
         
       with col3:
-        st.metric("Unemployment Rate", str(a2['pct_unemp'][0]*100) + "%")
-        st.metric("Yelp Avg. Score", a2['ind_yelp'][0])
+        st.metric("Unemployment Rate", a2['pct_unemp'][0]*100, delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
+        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2))
         
       with col4:
-        st.metric("Avg. Travel Time to Work", str(a2["ind_com"][0]) + " min")
-        st.metric("Yelp Term Ratio", a2['pct_yelp'][0])
+        st.metric("Avg. Travel Time to Work", a2["ind_com"][0], delta=float(a2["ind_com"][0] - a2_2["ind_com"][0]), delta_color="inverse")
+        st.metric("Yelp Term Ratio", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2))
         
       st.metric("Majority Industry", a2["val_ind"][0])
       
-    st.markdown("  ")
     st.markdown("---")
     st.markdown("  ")
     
+    st.info(f"Neighborhood Ranking Trend Compared to The Other Neighborhoods in {st.session_state['cbsa_title']} (2016 - 2020)")
     with st.container():
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
       
@@ -353,27 +400,28 @@ with tab1:
     st.markdown("---")
     st.markdown("  ")
     
+    
+    st.info(f"Housing-Related Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
       a3 = analysis_3(st.session_state['zipcode'])
-      col5, col6, col7, col8, col9 = st.columns(5)
+      col5, col6, col7, col8 = st.columns(4)
       
       with col5:
-        st.metric("Avg. Bedrooms", str(a2['avg_bd'][0]))
+        st.metric("Avg. Bedrooms", a2['avg_bd'][0], delta=round(float(a2['avg_bd'][0] - a2_2['avg_bd'][0]), 2))
+        st.metric("Avg. Price", a2['avg_price'][0], delta=round(float(a2['avg_price'][0] - a2_2['avg_price'][0]), 2))
         
       with col6:
-        st.metric("Avg. Bathrooms", str(a2['avg_bt'][0]))
+        st.metric("Avg. Bathrooms", a2['avg_bt'][0], delta=round(float(a2['avg_bt'][0] - a2_2['avg_bt'][0]), 2))
+        st.metric("Elementary School Score", a2['el'][0], delta=round(float(a2['el'][0] - a2_2['el'][0]), 2))
         
       with col7:
-        st.metric("Avg. YearBuilt", str(a2['avg_y'][0]))
+        st.metric("Avg. YearBuilt", a2['avg_y'][0], delta=round(float(a2['avg_y'][0] - a2_2['avg_y'][0]), 2))
+        st.metric("Middle School Score", a2['md'][0], delta=round(float(a2['md'][0] - a2_2['md'][0]), 2))
         
       with col8:
-        st.metric("Avg. Sq Ft", str(a2['avg_spft'][0]))
-        
-      with col9:
-        st.metric("Avg. Price", str(a2['avg_price'][0]))
-    
-    a2
-    a3
+        st.metric("Avg. Sq Ft", a2['avg_spft'][0], delta=round(float(a2['avg_spft'][0] - a2_2['avg_spft'][0]), 2))
+        st.metric("High School Score", a2['hi'][0], delta=round(float(a2['hi'][0] - a2_2['hi'][0]), 2))
+
     
   else:
     ##### if no rec yet, display none
