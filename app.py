@@ -13,7 +13,7 @@ p = inflect.engine()
 st.set_page_config(page_title="Neighborhood Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
 st.markdown("# :house_buildings: Neighborhood Recommender")
 st.markdown("### CSE 6242 Project - Team 110")
-st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best neighbrohood for you**! :dancer:")    
+st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best neighborhood for you**! :dancer:")    
 st.markdown("")
 
 engine = create_engine(key.engine, echo=False)
@@ -128,7 +128,7 @@ def analysis_rank(zipcode, cbsa):
             rank_df['rank'] = rank_df[rename[i]].rank(ascending=False)
             
             rank = float(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
-            title.append(f'{rename[i]} Ranking: your neighborhood {zipcode} is {p.ordinal(rank)} place out of {all} neighborhoods in Metropolitan Statistical Area {cbsa} in ' + df_analysis['Years'].unique()[j]
+            title.append(f'{rename[i]} Ranking: your neighborhood {zipcode} is {p.ordinal(rank)} place out of {all} neighborhoods in ' + df_analysis['Years'].unique()[j]
             )
         
         # bar chart animated by each year    
@@ -251,6 +251,67 @@ def analysis_3(zipcode):
   df = pd.read_sql(query, engine)
   return df
 
+# analysis 4
+@st.experimental_memo
+def analysis_4(zipcode, cbsa):
+    # read table
+    df = pd.read_sql('SELECT zipcode, year as years, hpi, `change` FROM price_census where cbsa = {cbsa}'.format(cbsa = str(cbsa)), con=engine).astype({'zipcode': 'str'})
+    df = df.rename({'zipcode': 'Zip Code', 'years':'Years', 'hpi': 'HPI (Housing Price Index)', 'change': 'Price Change'}, axis=1)
+    
+    # get the number of zipcodes in the cbsa
+    all = len(df['Zip Code'].unique().tolist())
+    
+    # assign color to user zip
+    colors = {}
+    color_discrete_map = {
+        c: colors.get(c, "#C0C0C0") 
+        for c in df['Zip Code'].unique()}
+    color_discrete_map[str(zipcode)] = "Red"
+    
+    # chart = []
+    # for i in range(len(column)):
+    # sliced dataframe by column
+    
+    # min max for y range
+    min = df['HPI (Housing Price Index)'].min()
+    max = df['HPI (Housing Price Index)'].max()
+    
+    # bar chart animated by each year    
+    lines = []
+    for i in df['Zip Code'].unique().tolist():
+        if i != str(zipcode):
+            line = go.Scatter(x=df[df['Zip Code'] == i]['Years'], y=df[df['Zip Code'] == i]['HPI (Housing Price Index)'], line_color = "grey", opacity=.2, name=i, line=dict(width=1))
+            lines.append(line)
+        else:
+            line = go.Scatter(x=df[df['Zip Code'] == i]['Years'], y=df[df['Zip Code'] == i]['HPI (Housing Price Index)'], line_color = "red", mode='lines+markers', name=i)
+            lines.append(line)
+    
+    fig1 = go.Figure(data=lines, layout=go.Layout(showlegend=True))                               
+
+    # fig = px.line(df, y='HPI (Housing Price Index)', x='Years', color='Zip Code'
+    #             , color_discrete_map=color_discrete_map)
+    
+    # sort descending, format y axis and range
+    fig1.update_layout(
+        title = "Housing Price Index by Zip Code",
+        xaxis = {'categoryorder':'total descending'},
+        yaxis_tickformat = '.3f',
+        yaxis_range = [min*0.99999, max*1.001],
+        xaxis_title = "Years",
+        yaxis_title = "HPI (Housing Price Index)",
+    )
+    
+    fig2 = px.bar(df[df['Zip Code'] == str(zipcode)], x='Years', y='Price Change', color='Years', text_auto=True, color_continuous_scale=px.colors.sequential.Viridis)
+    fig2.update_traces(textposition='outside')
+    fig2.update_layout(
+        title = "Annual Housing Price Change (%) in Your Neighborhood",
+        yaxis_tickformat = '.3f',
+        xaxis_title = "Years",
+        yaxis_title = "Price Change (%)",
+    )
+    
+    return fig1, fig2
+
 ### initiate cbsa / fixed dropdown options 
 cbsa = get_cbsa()
 bd, cent, edu, fam, home, inc, sch, sqft, year = get_dd()
@@ -347,10 +408,12 @@ with tab1:
     
     st.info(f"Major Neighborhood Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
+      ##### run analysis functions
       a2 = analysis_2(st.session_state['zipcode'])
       a2_2 = analysis_2_2(st.session_state['cbsa'])
       col1, col2, col3, col4 = st.columns(4)
       
+      # get the metric score cards for each neighborhood compared to the average in the cbsa
       with col1:
         st.metric("Majority Age Group", a2['val_age'][0].replace('_', ' ').title())
         st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
@@ -376,6 +439,7 @@ with tab1:
     
     st.info(f"Neighborhood Ranking Trend Compared to The Other Neighborhoods in {st.session_state['cbsa_title']} (2016 - 2020)")
     with st.container():
+      ##### run analysis function
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
       
       ##### display the chart
@@ -403,9 +467,11 @@ with tab1:
     
     st.info(f"Housing-Related Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
+      ###### run analysis function
       a3 = analysis_3(st.session_state['zipcode'])
       col5, col6, col7, col8 = st.columns(4)
       
+      ###### get the metric score cards for housing compared to the average in the cbsa
       with col5:
         st.metric("Avg. Bedrooms", a2['avg_bd'][0], delta=round(float(a2['avg_bd'][0] - a2_2['avg_bd'][0]), 2))
         st.metric("Avg. Price", a2['avg_price'][0], delta=round(float(a2['avg_price'][0] - a2_2['avg_price'][0]), 2))
@@ -421,6 +487,19 @@ with tab1:
       with col8:
         st.metric("Avg. Sq Ft", a2['avg_spft'][0], delta=round(float(a2['avg_spft'][0] - a2_2['avg_spft'][0]), 2))
         st.metric("High School Score", a2['hi'][0], delta=round(float(a2['hi'][0] - a2_2['hi'][0]), 2))
+    
+    st.markdown("  ")
+    st.markdown("---")
+    
+    st.info(f"Housing Price Change Compared to The Other Neighborhoods in {st.session_state['cbsa_title']}")
+    with st.container():
+      tab12, tab13 = st.tabs(["Price", "HPI (Housing Price Index)"])
+      ###### run analysis function
+      a4 = analysis_4(st.session_state['zipcode'], st.session_state['cbsa'])
+      with tab12:
+        st.plotly_chart(a4[1])
+      with tab13:
+        st.plotly_chart(a4[0])
 
     
   else:
