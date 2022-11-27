@@ -5,6 +5,9 @@ import googlemaps
 import util.key as key
 import plotly.express as px
 import plotly.graph_objects as go
+import inflect
+
+p = inflect.engine()
 
 ### main page layout
 st.set_page_config(page_title="Neighborhood Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
@@ -86,6 +89,103 @@ def get_yelp_data(zipcode):
   fun = pd.read_sql(query2, engine)
   return food, fun
 
+# analysis 1 function
+@st.experimental_memo
+def analysis_rank(zipcode, cbsa):
+    # read table
+    df = pd.read_sql('select * from census_final where cbsa={}'.format(cbsa), con=engine).astype({'zipcode': 'str', 'cbsa': 'str', 'years': 'str'})
+    # to be analyzed columns
+    column = ['unemployment_rate_final', 'gender_diversity_index_final', 'mean_travel_time_to_work_minutes_final', 'mean_household_income_dollars_final', 'percent_population_work_from_home_final', 'percent_family_households_final', 'median_age_final']
+    # column name change
+    rename = ['Unemployment Rate', 'Gender Diversity', 'Commute Time', 'Household Income', 'WFH Rate', 'Family-Friendliness', 'Median Age']
+    
+    # get the number of zipcodes in the cbsa
+    all = len(df['zipcode'].unique().tolist())
+    
+    # assign color to user zip
+    colors = {}
+    color_discrete_map = {
+        c: colors.get(c, "#C0C0C0") 
+        for c in df['zipcode'].unique()}
+    color_discrete_map[str(zipcode)] = "Red"
+    
+    # iterate through each column for analysis
+    
+    chart = []
+    for i in range(len(column)):
+        # sliced dataframe by column
+        df_analysis = df[['zipcode', 'years', column[i]]].rename({'zipcode': 'Zip Code', 'years':'Years', column[i]: rename[i]}, axis=1)
+        
+        # min max for y range
+        min = df_analysis[rename[i]].min()
+        max = df_analysis[rename[i]].max()
+        
+        # dynamic title for each year
+        title = []
+        for j in range(len(df_analysis['Years'].unique())):
+            rank_df = df_analysis.copy()
+            rank_df = rank_df[rank_df['Years'] == rank_df['Years'].unique()[j]]
+            rank_df['rank'] = rank_df[rename[i]].rank(ascending=False)
+            
+            rank = int(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
+            title.append(f'{rename[i]} Ranking: your neighborhood {zipcode} is {p.ordinal(rank)} place out of {all} neighborhoods in Metropolitan Statistical Area {cbsa} in ' + df_analysis['Years'].unique()[j]
+            )
+        
+        # bar chart animated by each year    
+        fig = px.bar(df_analysis, y=rename[i], x='Zip Code', animation_frame='Years', color='Zip Code'
+                    , color_discrete_map=color_discrete_map, text_auto=True)
+        
+        # sort descending, format y axis and range
+        fig.update_layout(
+            title = title[0],
+            xaxis = {'categoryorder':'total descending'},
+            yaxis_tickformat = '.3f',
+            yaxis_range = [min*0.99999, max*1.001]
+        )
+        
+
+        # append title for each year
+        for k in range(len(fig.frames)):
+            fig.frames[k]['layout'].update(title_text=title[k])
+        
+        chart.append(fig)
+        
+    return chart
+
+# analysis 2
+@st.experimental_memo
+def analysis_2(zipcode):
+  query = """
+    select
+        cf.zipcode,
+        round(cf.percent_female_final,2) as pct_f,
+        round(cf.percent_male_final,2) as pct_m,
+        round(cf.percent_family_households_final,2) as pct_fam,
+        round(cf.percent_family_households_final,2) as pct_non_fam,
+        cf.majority_age_group_final as val_age,
+        cf.majority_industry_final as val_ind,
+        round(cf.unemployment_rate_final,2) as pct_unemp,
+        round(cf.mean_travel_time_to_work_minutes_final,2) as ind_com,
+        round(ae.nat_walk_ind,2) as ind_walk,
+        round(ae.traffic_dens_ind,2) as ind_trf,
+        yp.average_score as ind_yelp,
+        yp.term_ratio as pct_yelp,
+        round(avg(zlld.bedrooms_final),2) as avg_bd,
+        round(avg(zlld.bathrooms_final),2) as avg_bt,
+        round(avg(zlld.year_built_final),2) as avg_y,
+        round(avg(zlld.SqFt_final),2) as avg_spft,
+        round(avg(zlld.price),2) as avg_price
+
+    from census_final_2020  cf
+        inner join yelp_enriched yp on cf.zipcode = yp.zipcode
+        inner join accessibility_enriched ae on yp.cbsa = ae.cbsa
+        inner join zipcode_level_listing_detail zlld on yp.cbsa = zlld.cbsa
+    where cf.zipcode = {zipcode}
+    group by cf.zipcode
+    """.format(zipcode = zipcode)
+  df = pd.read_sql(query, engine)
+  
+  return df
 
 ### initiate cbsa / fixed dropdown options 
 cbsa = get_cbsa()
@@ -120,7 +220,6 @@ with st.sidebar.form("other_form"):
   
   if st.session_state['cbsa'] != 0:
     #### 2) user input form
-    print(home)
     home_type_param = st.selectbox("Preferred House Type", options=[''] + home['bucket'].tolist()) 
     bedroom_param = st.selectbox("Preferred Number of Bedrooms", options=[''] + bd['bucket'].tolist())
     sqft_param = st.selectbox("Preferred Sq Ft", options=[''] + sqft['bucket'].tolist())
@@ -266,14 +365,40 @@ with tab3:
 
 #### 5) analysis display
 with tab4:
-  with st.container():
-    if st.session_state['zipcode'] != 0:
-      ##### get the analysis data based on the predicted zipcode
-      yd = get_yelp_data(st.session_state['zipcode'])
-        
-    else:
-      ##### if no rec yet, display default map
-      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+  if st.session_state['zipcode'] != 0:
+    
+    with st.container():
+      st.markdown("### Here are some of the top neighborhoods in the same metro area")
+      print(st.session_state['zipcode'])
+      a2 = analysis_2(st.session_state['zipcode'])
+      st.dataframe(a2)
+      
+    st.markdown("  ")
+    with st.container():
+      chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
+      
+      ##### display the chart
+      st.markdown("- Your neighborhood ranking compared to the other neighborhoods in the same metro area")
+      tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(["Unemployment", "Gender Diversity", "Commute Time", "Household Income", "WFH Rate", "Family Friendliness", "Median Age"])
+      with tab5:
+        st.plotly_chart(chart[0])
+      with tab6:
+        st.plotly_chart(chart[1])
+      with tab7: 
+        st.plotly_chart(chart[2])
+      with tab8:
+        st.plotly_chart(chart[3])
+      with tab9:
+        st.plotly_chart(chart[4])
+      with tab10:
+        st.plotly_chart(chart[5])
+      with tab11:
+        st.plotly_chart(chart[6])
+    
+
+  else:
+    ##### if no rec yet, display none
+    st.markdown("")
 
 
 
