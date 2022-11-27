@@ -268,10 +268,6 @@ def analysis_4(zipcode, cbsa):
         for c in df['Zip Code'].unique()}
     color_discrete_map[str(zipcode)] = "Red"
     
-    # chart = []
-    # for i in range(len(column)):
-    # sliced dataframe by column
-    
     # min max for y range
     min = df['HPI (Housing Price Index)'].min()
     max = df['HPI (Housing Price Index)'].max()
@@ -286,10 +282,7 @@ def analysis_4(zipcode, cbsa):
             line = go.Scatter(x=df[df['Zip Code'] == i]['Years'], y=df[df['Zip Code'] == i]['HPI (Housing Price Index)'], line_color = "red", mode='lines+markers', name=i)
             lines.append(line)
     
-    fig1 = go.Figure(data=lines, layout=go.Layout(showlegend=True))                               
-
-    # fig = px.line(df, y='HPI (Housing Price Index)', x='Years', color='Zip Code'
-    #             , color_discrete_map=color_discrete_map)
+    fig1 = go.Figure(data=lines, layout=go.Layout(showlegend=True))                     
     
     # sort descending, format y axis and range
     fig1.update_layout(
@@ -419,8 +412,6 @@ with tab1:
         st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
         
       with col2:
-        print(a2['avg_inc'][0])
-        print(a2_2['avg_inc'][0])
         st.metric("Avg. Household Income", a2['avg_inc'][0], delta=float(a2['avg_inc'][0] - a2_2['avg_inc'][0]))
         st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse")
         
