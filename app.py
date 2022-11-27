@@ -21,14 +21,14 @@ gmaps_key = googlemaps.Client(key=key.api_key)
 
 ### data read functions 
 # get the list of cbsa (fixed - dataframe)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_cbsa():
   query = "select distinct cbsa, cbsatitle from listings_enriched_final order by cbsa"
   df = pd.read_sql(query, engine)
   return df
 
 # get the dropdown options (fixed - dataframe)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_dd():
   query = "select type, dummy, bucket from mapping"
   df = pd.read_sql(query, engine)
@@ -45,14 +45,14 @@ def get_dd():
   return bd, cent, edu, fam, home, inc, sch, sqft, year
 
 # get the price, age dropdown options based on cbsa (dynamic - dataframe)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_dd_other(user_cbsa):
   price = pd.read_sql(f"select * from mapping_price where cbsa = {user_cbsa}", engine)
   age = pd.read_sql(f"select * from mapping_age where cbsa = {user_cbsa}", engine)
   return price, age
 
 # get the zip recommendation based on the user inputs (dynamic - string)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_zip(cbsa_input, bedroom_input, cent_input, edu_input, fam_input, home_input, inc_input, sch_input, sqft_input, year_input, price_input, age_input):
   query = """
           select pred from predicted_output_{cbsa_input}
@@ -74,14 +74,14 @@ def get_zip(cbsa_input, bedroom_input, cent_input, edu_input, fam_input, home_in
   return zip
 
 # get the list of listing based on recommended zip (fixed - dataframe; 10 rows)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_listing(zipcode):
   query = "select streetAddress, city, state, zipcode, hometype_cd, sqft, bedrooms, bathrooms, yearbuilt from listing where zipcode = {} limit 10".format(zipcode)
   listing = pd.read_sql(query, engine)
   return listing
 
 # get the list of food / fun business based on recommended zip (fixed - dataframe; 10 rows)
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def get_yelp_data(zipcode):
   query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 10".format(zipcode)
   query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 10".format(zipcode)
@@ -90,7 +90,7 @@ def get_yelp_data(zipcode):
   return food, fun
 
 # analysis 1 function
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def analysis_rank(zipcode, cbsa):
     # read table
     df = pd.read_sql('select * from census_final where cbsa={}'.format(cbsa), con=engine).astype({'zipcode': 'str', 'cbsa': 'str', 'years': 'str'})
@@ -140,7 +140,7 @@ def analysis_rank(zipcode, cbsa):
             title = title[0],
             xaxis = {'categoryorder':'total descending'},
             yaxis_tickformat = '.3f',
-            yaxis_range = [min*0.99999, max*1.001]
+            yaxis_range = [min*0.9999, max*1.001]
         )
         
 
@@ -153,7 +153,7 @@ def analysis_rank(zipcode, cbsa):
     return chart
 
 # analysis 2
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def analysis_2(zipcode):
   query = """
     select
@@ -196,7 +196,7 @@ def analysis_2(zipcode):
 
 
 # analysis 2_2
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def analysis_2_2(cbsa):
   query = """
     select
@@ -236,7 +236,7 @@ def analysis_2_2(cbsa):
   return df
 
 # analysis 3
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def analysis_3(zipcode):
   query = """
   select
@@ -252,7 +252,7 @@ def analysis_3(zipcode):
   return df
 
 # analysis 4
-@st.experimental_memo
+@st.experimental_memo(show_spinner=False)
 def analysis_4(zipcode, cbsa):
     # read table
     df = pd.read_sql('SELECT zipcode, year as years, hpi, `change` FROM price_census where cbsa = {cbsa}'.format(cbsa = str(cbsa)), con=engine).astype({'zipcode': 'str'})
