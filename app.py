@@ -2,221 +2,281 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
 import googlemaps
-# import pydeck as pdk
 import util.key as key
+import plotly.express as px
+import plotly.graph_objects as go
 
-
+### main page layout
 st.set_page_config(page_title="Neighborhood Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
-
-# Connection
-@st.cache(show_spinner=False)
-def get_cbsa():
-      engine = create_engine(key.engine, echo=False)
-      query = "select distinct cbsa, cbsatitle from listings_enriched_final order by cbsa"
-      df = pd.read_sql(query, engine)
-      return df
-
-@st.cache(show_spinner=False, allow_output_mutation=True)
-def cbsa_input(user_cbsa):
-  engine = create_engine(key.engine, echo=False)
-  
-  family_type = pd.read_sql(f"select distinct family_type_dummy, case when family_type_dummy = 1 then 'Yes' else 'No' end as family_type_final from listings_enriched_final where cbsa = {user_cbsa} order by family_type_dummy desc", engine)
-  yearbuilt = pd.read_sql(f"select * from call_yearbuilt where cbsa = {user_cbsa} order by yearbuilt_buckets_dummy desc", engine)
-  bd = pd.read_sql(f"select distinct bedroom_bucket_dummy, cast(round(bedrooms_final) as char) as bedrooms_final from listings_enriched_final where cbsa = {user_cbsa} order by bedroom_bucket_dummy", engine)
-  sqft = pd.read_sql(f"select * from call_sqft where cbsa = {user_cbsa}", engine)
-  hometype = pd.read_sql(f"select * from call_hometype where cbsa = {user_cbsa}", engine)
-  income = pd.read_sql(f"select * from call_income where cbsa = {user_cbsa}", engine)
-  price = pd.read_sql(f"select * from call_price where cbsa = {user_cbsa}", engine)
-  age = pd.read_sql(f"select * from call_age where cbsa = {user_cbsa}", engine)
-  edu = pd.read_sql(f"select * from call_edu where cbsa = {user_cbsa}", engine)
-  bt = pd.read_sql(f"select distinct bathrooms_bucket_dummy, cast(round(bathrooms_final) as char) as bathrooms_final from listings_enriched_final where cbsa = {user_cbsa} order by bathrooms_bucket_dummy", engine)
-  
-  return family_type, yearbuilt, bd, sqft, hometype, income, price, age, edu, bt
-
-
-@st.cache(allow_output_mutation=True)
-def get_zip(home_type_input, income_input, bedroom_input, age_input, price_input, sqft_input, year_input, fam_input, edu_input, bathroom_input):
-  engine = create_engine(key.engine, echo=False)
-  query = """
-          select 
-            *
-          from output_pred output
-          where 
-          hometype_dummy = '{hometype}'
-          and majority_income_dummy = '{income}'
-          and bedroom_bucket_dummy = '{bd}'
-          and median_age_dummy = '{age}'
-          and price_dummy = '{price}'
-          and sqft_buckets_dummy = '{sqft}'
-          and yearbuilt_buckets_dummy = '{yearbuilt}'
-          and family_type_dummy = '{familytype}'
-          and overall_education_score_dummy = '{edu}'
-          and bathrooms_bucket_dummy = '{bt}'
-          """.format(hometype = home_type_input, income = income_input, bd = bedroom_input, age = age_input, price = price_input, sqft = sqft_input, yearbuilt = year_input, familytype = fam_input, edu = edu_input, bt = bathroom_input) 
-  zip = pd.read_sql(query, engine)
-  return zip
-
-
-@st.cache(show_spinner=False, allow_output_mutation=True)
-def get_listing(zipcode):
-  engine = create_engine(key.engine, echo=False)
-  query = "select * from listing where zipcode = {} limit 10".format(zipcode)
-  listing = pd.read_sql(query, engine)
-  return listing
-
-@st.cache(show_spinner=False, allow_output_mutation=True)
-def get_yelp_data(zipcode):
-  engine = create_engine(key.engine, echo=False)
-  query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 5".format(zipcode)
-  df1 = pd.read_sql(query1, engine)
-  query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 5".format(zipcode)
-  df2 = pd.read_sql(query2, engine)
-  yd = pd.concat([df1, df2])
-  return yd
-
-@st.cache(show_spinner=False, allow_output_mutation=True)
-def get_county(zipcode):
-  engine = create_engine(key.engine, echo=False)
-  query = "select concat(county, ', ', city) as county from zip_county where zipcode = {}".format(zipcode)
-  county = pd.read_sql(query, engine)
-  return county
-
-cbsa = get_cbsa()
-
-
-if 'cbsa' not in st.session_state:
-  st.session_state['cbsa'] = 0
-    
-if 'other_input' not in st.session_state:
-  st.session_state['other_input'] = 0
-  
-if 'zipcode' not in st.session_state:
-  st.session_state['zipcode'] = 0
-
-
 st.markdown("# :house_buildings: Neighborhood Recommender")
 st.markdown("### CSE 6242 Project - Team 110")
 st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best neighbrohood for you**! :dancer:")    
 st.markdown("")
 
-with st.sidebar.form("other_form"):
+engine = create_engine(key.engine, echo=False)
+gmaps_key = googlemaps.Client(key=key.api_key)
+
+### data read functions 
+# get the list of cbsa (fixed - dataframe)
+@st.experimental_memo
+def get_cbsa():
+  query = "select distinct cbsa, cbsatitle from listings_enriched_final order by cbsa"
+  df = pd.read_sql(query, engine)
+  return df
+
+# get the dropdown options (fixed - dataframe)
+@st.experimental_memo
+def get_dd():
+  query = "select type, dummy, bucket from mapping"
+  df = pd.read_sql(query, engine)
+  
+  bd = df[df['type'] == 'Bedroom']
+  cent = df[df['type'] == 'Centrality']
+  edu = df[df['type'] == 'Education']
+  fam = df[df['type'] == 'Family']
+  home = df[df['type'] == 'HomeType']
+  inc = df[df['type'] == 'Income']
+  sch = df[df['type'] == 'School']
+  sqft = df[df['type'] == 'Sqft']
+  year = df[df['type'] == 'Yearbuilt']
+  return bd, cent, edu, fam, home, inc, sch, sqft, year
+
+# get the price, age dropdown options based on cbsa (dynamic - dataframe)
+@st.experimental_memo
+def get_dd_other(user_cbsa):
+  price = pd.read_sql(f"select * from mapping_price where cbsa = {user_cbsa}", engine)
+  age = pd.read_sql(f"select * from mapping_age where cbsa = {user_cbsa}", engine)
+  return price, age
+
+# get the zip recommendation based on the user inputs (dynamic - string)
+@st.experimental_memo
+def get_zip(cbsa_input, bedroom_input, cent_input, edu_input, fam_input, home_input, inc_input, sch_input, sqft_input, year_input, price_input, age_input):
+  query = """
+          select pred from predicted_output_{cbsa_input}
+          where 
+            majority_income_dummy = {inc_input} and
+            majority_education_dummy = {edu_input} and
+            hometype_dummy = {home_input} and
+            family_type_dummy= {fam_input} and
+            bedroom_bucket_dummy = {bedroom_input} and
+            sqft_buckets_dummy = {sqft_input} and
+            yearbuilt_buckets_dummy = {year_input} and
+            overall_education_score_dummy = {sch_input} and
+            centrality_index_dummy = {cent_input} and
+            price_dummy = {price_input} and
+            median_age_dummy = {age_input}
+          """.format(cbsa_input=cbsa_input, inc_input=inc_input, edu_input=edu_input, home_input=home_input, fam_input=fam_input, bedroom_input=bedroom_input, sqft_input=sqft_input, year_input=year_input, sch_input = sch_input, cent_input=cent_input, price_input=price_input, age_input=age_input)
+          
+  zip = str(pd.read_sql(query, engine).iloc[0,0])
+  return zip
+
+# get the list of listing based on recommended zip (fixed - dataframe; 10 rows)
+@st.experimental_memo
+def get_listing(zipcode):
+  query = "select streetAddress, city, state, zipcode, hometype_cd, sqft, bedrooms, bathrooms, yearbuilt from listing where zipcode = {} limit 10".format(zipcode)
+  listing = pd.read_sql(query, engine)
+  return listing
+
+# get the list of food / fun business based on recommended zip (fixed - dataframe; 10 rows)
+@st.experimental_memo
+def get_yelp_data(zipcode):
+  query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 5".format(zipcode)
+  query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 5".format(zipcode)
+  food = pd.read_sql(query1, engine)
+  fun = pd.read_sql(query2, engine)
+  return food, fun
+
+
+### initiate cbsa / fixed dropdown options 
+cbsa = get_cbsa()
+bd, cent, edu, fam, home, inc, sch, sqft, year = get_dd()
+
+### initiate sesison states that will be used over steps
+if 'cbsa' not in st.session_state:
+  st.session_state['cbsa'] = 0
     
+if 'user_input' not in st.session_state:
+  st.session_state['user_input'] = 0
+  
+if 'zipcode' not in st.session_state:
+  st.session_state['zipcode'] = 0
+
+### sidebar
+with st.sidebar.form("other_form"):
+    #### 1) cbsa selection form
   cbsa_param = st.selectbox("Select Geographic Area", options=[''] + cbsa['cbsatitle'].tolist())
   submit = st.form_submit_button("Submit")
   
   if submit:
+    ##### map cbsa label to bucket
     user_cbsa = cbsa[cbsa['cbsatitle'] == cbsa_param]['cbsa'].values[0]
     user_cbsa = str(user_cbsa)
-    family_type, yearbuilt, bd, sqft, hometype, income, price, age, edu, bt = cbsa_input(user_cbsa)
-    st.session_state['other_input'] = {'family_type': family_type, 'yearbuilt': yearbuilt, 'bd': bd, 'sqft': sqft, 'hometype': hometype, 'income': income, 'price': price, 'age': age, 'edu': edu, 'bt': bt}
     st.session_state['cbsa'] = user_cbsa
+    
+    ##### get price, age dropdown options based on cbsa user input
+    price, age = get_dd_other(user_cbsa)
+    st.session_state['user_input'] = {'price': price, 'age': age}
 
+  
   if st.session_state['cbsa'] != 0:
-    home_type_param = st.selectbox("Preferred Home Type", options=[''] + st.session_state['other_input']['hometype']['hometype'].tolist()) 
-    bedroom_param = st.selectbox("\# Bedrooms", options=[''] + st.session_state['other_input']['bd']['bedrooms_final'].tolist())
-    bathroom_param = st.selectbox("\# Bathrooms", options=[''] + st.session_state['other_input']['bt']['bathrooms_final'].tolist())
-    price_param = st.selectbox("Ideal Price Range", [''] + st.session_state['other_input']['price']['price_bucket'].tolist())
-    square_feet_param = st.selectbox("Preferred Size", [''] + st.session_state['other_input']['sqft']['sqft_final'].tolist())
-    year_built_param = st.selectbox("Preferred Age of Property", [''] + st.session_state['other_input']['yearbuilt']['year_built_final'].tolist())
-    income_param = st.selectbox("Your Income", options=[''] + st.session_state['other_input']['income']['majority_income_final'].tolist())
-    edu_param = st.selectbox("Your Highest Education", options=[''] + st.session_state['other_input']['edu']['majority_education_final'].tolist())
-    age_param = st.selectbox("Your Age", [''] + st.session_state['other_input']['age']['age_bucket'].tolist())
-    family_param = st.selectbox("Do you live with your family (Spouse and Kids)?", options=[''] + st.session_state['other_input']['family_type']['family_type_final'].tolist())  
+    #### 2) user input form
+    print(home)
+    home_type_param = st.selectbox("Preferred House Type", options=[''] + home['bucket'].tolist()) 
+    bedroom_param = st.selectbox("Preferred Number of Bedrooms", options=[''] + bd['bucket'].tolist())
+    sqft_param = st.selectbox("Preferred Sq Ft", options=[''] + sqft['bucket'].tolist())
+    year_param = st.selectbox("Preferred Year Built", options=[''] + year['bucket'].tolist())
+    price_param = st.selectbox("Preferred Price Range", options=[''] + st.session_state['user_input']['price']['bucket'].tolist())
+    age_param = st.selectbox("Household Median Age", options=[''] + st.session_state['user_input']['age']['bucket'].tolist())
+    inc_param = st.selectbox("Household Income", options=[''] + inc['bucket'].tolist())
+    edu_param = st.selectbox("Household Level of Education", options=[''] + edu['bucket'].tolist())
+    fam_param = st.selectbox("Do you have children under 19 in your household?", options=[''] + fam['bucket'].tolist())
+    sch_param = st.selectbox("Grade School Importance", options=[''] + sch['bucket'].tolist())
+    cent_param = st.selectbox("Proximity to City Center Importance", options=[''] + cent['bucket'].tolist())
     
     if st.form_submit_button("Predict"):
-      if home_type_param == '' or bedroom_param == '' or bathroom_param == '' or price_param == '' or square_feet_param == '' or year_built_param == '' or income_param == '' or edu_param == '' or age_param == '' or family_param == '':
-        st.error("Please fill out all the fields")
+      if home_type_param == '' or bedroom_param == '' or cent_param == '' or edu_param == '' or fam_param == '' or inc_param == '' or sch_param == '' or sqft_param == '' or year_param == '' or price_param == '' or age_param == '':
+        ##### if not all filled out, return error message
+        st.warning("Please fill in all the fields")
         
-      elif home_type_param != '' and bedroom_param != '' and bathroom_param != '' and price_param != '' and square_feet_param != '' and year_built_param != '' and income_param != '' and edu_param != '' and age_param != '' and family_param != '':
-        home_type_input = st.session_state['other_input']['hometype'][st.session_state['other_input']['hometype']['hometype'] == home_type_param]['hometype_dummy'].values[0]
-        income_input = st.session_state['other_input']['income'][st.session_state['other_input']['income']['majority_income_final'] == income_param]['majority_income_dummy'].values[0]
-        bedroom_input = st.session_state['other_input']['bd'][st.session_state['other_input']['bd']['bedrooms_final'] == bedroom_param]['bedroom_bucket_dummy'].values[0]
-        bathroom_input = st.session_state['other_input']['bt'][st.session_state['other_input']['bt']['bathrooms_final'] == bathroom_param]['bathrooms_bucket_dummy'].values[0]
-        age_input = st.session_state['other_input']['age'][st.session_state['other_input']['age']['age_bucket'] == age_param]['median_age_dummy'].values[0]
-        price_input = st.session_state['other_input']['price'][st.session_state['other_input']['price']['price_bucket'] == price_param]['price_dummy'].values[0]
-        sqft_input = st.session_state['other_input']['sqft'][st.session_state['other_input']['sqft']['sqft_final'] == square_feet_param]['sqft_buckets_dummy'].values[0]
-        year_input  = st.session_state['other_input']['yearbuilt'][st.session_state['other_input']['yearbuilt']['year_built_final'] == year_built_param]['yearbuilt_buckets_dummy'].values[0]
-        fam_input = st.session_state['other_input']['family_type'][st.session_state['other_input']['family_type']['family_type_final'] == family_param]['family_type_dummy'].values[0]
-        edu_input = st.session_state['other_input']['edu'][st.session_state['other_input']['edu']['majority_education_final'] == edu_param]['majority_education_dummy'].values[0]
-
-        zip = get_zip(home_type_input, income_input, bedroom_input, age_input, price_input, sqft_input, year_input, fam_input, bathroom_input, edu_input)
+      elif home_type_param != '' and bedroom_param != '' and cent_param != '' and edu_param != '' and fam_param != '' and inc_param != '' and sch_param != '' and sqft_param != '' and year_param != '' and price_param != '' and age_param != '':
+        ##### if all filled out, map the user input label to bucket
+        bedroom_input = bd[bd['bucket'] == bedroom_param]['dummy'].values[0]
+        cent_input = cent[cent['bucket'] == cent_param]['dummy'].values[0]
+        edu_input = edu[edu['bucket'] == edu_param]['dummy'].values[0]
+        fam_input = fam[fam['bucket'] == fam_param]['dummy'].values[0]
+        home_input = home[home['bucket'] == home_type_param]['dummy'].values[0]
+        inc_input = inc[inc['bucket'] == inc_param]['dummy'].values[0]
+        sch_input = sch[sch['bucket'] == sch_param]['dummy'].values[0]
+        sqft_input = sqft[sqft['bucket'] == sqft_param]['dummy'].values[0]
+        year_input = year[year['bucket'] == year_param]['dummy'].values[0]
+        price_input = st.session_state['user_input']['price'][st.session_state['user_input']['price']['bucket'] == price_param]['dummy'].values[0]
+        age_input = st.session_state['user_input']['age'][st.session_state['user_input']['age']['bucket'] == age_param]['dummy'].values[0]
+      
+        ##### get the predicted zipcode based on user input
+        zip = get_zip(st.session_state['cbsa'], bedroom_input, cent_input, edu_input, fam_input, home_input, inc_input, sch_input, sqft_input, year_input, price_input, age_input)
         
-        if zip[st.session_state['cbsa']].shape[0] != 0:
-          st.session_state['zipcode'] = zip[st.session_state['cbsa']].values[0]
-          
+        if zip != None:
+          st.session_state['zipcode'] = zip
+        else:
+          st.warning("No recommendation found")
 
+
+
+### main dashboard
+#### 1) result zipcode display
 if st.session_state['zipcode'] != 0:
-    county = get_county(st.session_state['zipcode'])
-    with st.container():
-      st.markdown("## Your ideal neighborhood is " + str(county['county'].values[0]) + "! :tada:")
-      st.markdown(f"*Zip Code : {str(st.session_state['zipcode'])}*")
-
-
-tab1, tab2, tab3 = st.tabs(["listing", "yelp", "analysis"])   
-     
-with tab1: 
-    ls = get_listing(st.session_state['zipcode'])
-    ls['address'] = ls.apply(lambda x: '%s, %s, %s, %s' % (x['streetAddress'], x['city'], x['state'], x['zipcode']), axis=1)
-    ls['lat'] = 0
-    ls['lon'] = 0
-
-    gmaps_key = googlemaps.Client(key=key.api_key)
-    df = ls[["streetAddress", "city", "state", "zipcode", "homeType_CD", "SqFt", "bedrooms", "bathrooms", "yearBuilt"]]
-    df.rename(columns={"streetAddress": "Street Address", "homeType_CD": "Home Type", "SqFt": "SqFt", "bedrooms": "# Bedroom", "bathrooms": "# Bathroom", "yearBuilt": "Year Built"}, inplace=True)
-    
-    # df_map = ls[["address", "lat", "lon"]]
-    
-    for i in range(len(ls)):
-      # g = gmaps_key.geocode(df_map['address'][i])
-      g = gmaps_key.geocode(ls['address'][i])
-      
-      if g[0]["geometry"]["location"]["lat"] != 0:
-        # df_map['lat'][i] = g[0]["geometry"]["location"]["lat"]
-        # df_map['lon'][i] = g[0]["geometry"]["location"]["lng"]
-        ls['lat'][i] = g[0]["geometry"]["location"]["lat"]
-        ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
-        
-
-    with st.container():
-      st.markdown("### Here are some available houses in your ideal neighborhood!")
-      
-      # st.pydeck_chart(pdk.Deck(
-      #     map_style='mapbox://styles/mapbox/light-v9',
-      #     layers=[
-      #         pdk.Layer(
-      #             'ScatterplotLayer',
-      #             data=df_map,
-      #             get_position='[lon, lat]',
-      #             get_color='[200, 30, 0, 160]',
-      #             get_radius=200,
-      #             pickable=True,
-      #         ),
-      #     ],
-      # ))
-      
-      st.map(ls[['lat', 'lon']])
-      st.table(df.style.format({"SqFt": "{:.0f}", "# Bedroom": "{:.0f}", "# Bathroom": "{:.0f}", "Year Built": "{:.0f}"}))
-      
-      
-with tab2:
-  yd = get_yelp_data(st.session_state['zipcode'])
-
-  yd.rename(
-    columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
-             "categories": "Business Categories"}, inplace=True)
-
   with st.container():
-    st.markdown("### Here are some of the top businesses from Yelp in the food and fun categories in your ideal neighborhood!")
+    st.markdown("## Your ideal neighborhood is " + str(st.session_state["zipcode"]) + "! :tada:")
+else:
+  with st.container():
+    st.markdown("## Your ideal neighborhood is ... :thinking_face:")
 
-    st.map(yd[['latitude', 'longitude']])
-    df = yd.copy()
-    df.drop('zipcode', inplace=True, axis=1, errors='ignore')
-    df.drop('latitude', inplace=True, axis=1, errors='ignore')
-    df.drop('longitude', inplace=True, axis=1, errors='ignore')
-    st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
 
+tab1, tab2, tab3, tab4 = st.tabs(["Housing", "Food", "Fun", "Neighborhood Analysis"])   
+
+#### 2) housing map display    
+with tab1: 
+  with st.container():
+    if st.session_state['zipcode'] != 0:
+      ##### get the housing data based on the predicted zipcode
+      ls = get_listing(st.session_state['zipcode'])
+      df = ls.rename(columns={"streetAddress": "Street Address", "sqft": "Sqft", "hometype_cd": "Home Type", "bedrooms": "Bedroom", "bathrooms": "Bathroom", "yearbuilt": "Year Built"})
+      
+      ls['address'] = ls.apply(lambda x: '%s, %s, %s, %s' % (x['streetAddress'], x['city'], x['state'], x['zipcode']), axis=1)
+      ls['lat'] = 0
+      ls['lon'] = 0
+      
+      ##### get lat, lon for each listing
+      for i in range(len(ls)):
+        g = gmaps_key.geocode(ls['address'][i])
+        
+        if g[0]["geometry"]["location"]["lat"] == 0:
+          pass
+        
+        else:
+          ls['lat'][i] = g[0]["geometry"]["location"]["lat"]
+          ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
+          
+      ##### display the map
+      st.markdown("### Here are some available houses in your ideal neighborhood!")
+      st.map(ls[['lat', 'lon']])
+      
+      ##### display the table
+      st.table(df.style.format({"SqFt": "{:.0f}", "Bedroom": "{:.0f}", "Bathroom": "{:.0f}", "Year Built": "{:.0f}"}))
+          
+    else:
+      ##### if no rec yet, display default map
+      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+      
+
+#### 3) food map display      
+with tab2:
+  with st.container():
+    if st.session_state['zipcode'] != 0:
+      ##### get the food data based on the predicted zipcode
+      yd = get_yelp_data(st.session_state['zipcode'])[0]
+
+      yd.rename(
+        columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
+                "categories": "Business Categories"}, inplace=True)
+
+        ##### display the map
+      st.markdown("### Here are some of the top restaurants from Yelp in your ideal neighborhood!")
+      st.map(yd[['latitude', 'longitude']])
+      
+      ##### display the table
+      df = yd.copy()
+      df.drop('zipcode', inplace=True, axis=1, errors='ignore')
+      df.drop('latitude', inplace=True, axis=1, errors='ignore')
+      df.drop('longitude', inplace=True, axis=1, errors='ignore')
+      st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
+        
+    else:
+      ##### if no rec yet, display default map
+      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+
+
+#### 4) fun map display      
 with tab3:
-  pass
+  with st.container():
+    if st.session_state['zipcode'] != 0:
+      ##### get the fun data based on the predicted zipcode
+      yd = get_yelp_data(st.session_state['zipcode'])[1]
+
+      yd.rename(
+        columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
+                "categories": "Business Categories"}, inplace=True)
+
+        ##### display the map
+      st.markdown("### Here are some of the top entertainments from Yelp in your ideal neighborhood!")
+      st.map(yd[['latitude', 'longitude']])
+      
+      ##### display the table
+      df = yd.copy()
+      df.drop('zipcode', inplace=True, axis=1, errors='ignore')
+      df.drop('latitude', inplace=True, axis=1, errors='ignore')
+      df.drop('longitude', inplace=True, axis=1, errors='ignore')
+      st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
+        
+    else:
+      ##### if no rec yet, display default map
+      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+
+
+
+#### 5) analysis display
+with tab4:
+  with st.container():
+    if st.session_state['zipcode'] != 0:
+      ##### get the analysis data based on the predicted zipcode
+      yd = get_yelp_data(st.session_state['zipcode'])
+        
+    else:
+      ##### if no rec yet, display default map
+      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+
+
+
 
 def main():
   pass
