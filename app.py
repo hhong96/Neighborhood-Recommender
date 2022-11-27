@@ -10,10 +10,10 @@ import inflect
 p = inflect.engine()
 
 ### main page layout
-st.set_page_config(page_title="Neighborhood Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
-st.markdown("# :house_buildings: Neighborhood Recommender")
+st.set_page_config(page_title="Zipcode Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
+st.markdown("# :house_buildings: Zipcode Recommender")
 st.markdown("### CSE 6242 Project - Team 110")
-st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best neighborhood for you**! :dancer:")    
+st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best zipcode for you**! :dancer:")
 st.markdown("")
 
 engine = create_engine(key.engine, echo=False)
@@ -128,7 +128,7 @@ def analysis_rank(zipcode, cbsa):
             rank_df['rank'] = rank_df[rename[i]].rank(ascending=False)
             
             rank = float(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
-            title.append(f'{rename[i]} Ranking: your neighborhood {zipcode} is {p.ordinal(rank)} place out of {all} neighborhoods in ' + df_analysis['Years'].unique()[j]
+            title.append(f'{rename[i]} Ranking: your zipcode {zipcode} is {p.ordinal(rank)} place out of {all} zipcodes in ' + df_analysis['Years'].unique()[j]
             )
         
         # bar chart animated by each year    
@@ -297,13 +297,24 @@ def analysis_4(zipcode, cbsa):
     fig2 = px.bar(df[df['Zip Code'] == str(zipcode)], x='Years', y='Price Change', color='Years', text_auto=True, color_continuous_scale=px.colors.sequential.Viridis)
     fig2.update_traces(textposition='outside')
     fig2.update_layout(
-        title = "Annual Housing Price Change (%) in Your Neighborhood",
+        title = "Annual Housing Price Change (%) in Your Zipcode",
         yaxis_tickformat = '.3f',
         xaxis_title = "Years",
         yaxis_title = "Price Change (%)",
     )
     
     return fig1, fig2
+
+st.markdown(
+    """
+<style>
+.css-50ug3q {
+    font-size: 30px;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 ### initiate cbsa / fixed dropdown options 
 cbsa = get_cbsa()
@@ -387,10 +398,10 @@ with st.sidebar.form("other_form"):
 #### 1) result zipcode display
 if st.session_state['zipcode'] != 0:
   with st.container():
-    st.markdown("## Your ideal neighborhood is " + str(st.session_state["zipcode"]) + "! :tada:")
+    st.markdown("## Your ideal zipcode is " + str(st.session_state["zipcode"]) + "! :tada:")
 else:
   with st.container():
-    st.markdown("## Your ideal neighborhood is ... :thinking_face:")
+    st.markdown("## Your ideal zipcode is ... :thinking_face:")
 
 
 tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])   
@@ -399,14 +410,14 @@ tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])
 with tab1: 
   if st.session_state['zipcode'] != 0:
     
-    st.info(f"Major Neighborhood Index Compared to The Average in {st.session_state['cbsa_title']}")
+    st.info(f"Major Zipcode Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
       ##### run analysis functions
       a2 = analysis_2(st.session_state['zipcode'])
       a2_2 = analysis_2_2(st.session_state['cbsa'])
       col1, col2, col3, col4 = st.columns(4)
       
-      # get the metric score cards for each neighborhood compared to the average in the cbsa
+      # get the metric score cards for each zipcode compared to the average in the cbsa
       with col1:
         st.metric("Majority Age Group", a2['val_age'][0].replace('_', ' ').title())
         st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
@@ -416,19 +427,19 @@ with tab1:
         st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse")
         
       with col3:
-        st.metric("Unemployment Rate", a2['pct_unemp'][0]*100, delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
-        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2))
+        st.metric("Unemployment Rate", round(a2['pct_unemp'][0]*100,2), delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
+        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2), help="average of reviews weighted by rating - the higher number the better")
         
       with col4:
         st.metric("Avg. Travel Time to Work", a2["ind_com"][0], delta=float(a2["ind_com"][0] - a2_2["ind_com"][0]), delta_color="inverse")
-        st.metric("Yelp Term Ratio", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2))
+        st.metric("Yelp Term Ratio", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2), help="ratio of # of business scraped from yelp to # of listings")
         
       st.metric("Majority Industry", a2["val_ind"][0])
       
     st.markdown("---")
     st.markdown("  ")
     
-    st.info(f"Neighborhood Ranking Trend Compared to The Other Neighborhoods in {st.session_state['cbsa_title']} (2016 - 2020)")
+    st.info(f"Zipcode Ranking Trend Compared to The Other Zipcodes in {st.session_state['cbsa_title']} (2016 - 2020)")
     with st.container():
       ##### run analysis function
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
@@ -482,7 +493,7 @@ with tab1:
     st.markdown("  ")
     st.markdown("---")
     
-    st.info(f"Housing Price Change Compared to The Other Neighborhoods in {st.session_state['cbsa_title']}")
+    st.info(f"Housing Price Change Compared to The Other Zipcodes in {st.session_state['cbsa_title']}")
     with st.container():
       tab12, tab13 = st.tabs(["Price", "HPI (Housing Price Index)"])
       ###### run analysis function
@@ -524,7 +535,7 @@ with tab2:
           ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
           
       ##### display the map
-      st.markdown("### Here are some available houses in your ideal neighborhood!")
+      st.markdown("### Here are some available houses in your ideal zipcode!")
       st.map(ls[['lat', 'lon']])
       
       ##### display the table
@@ -547,7 +558,7 @@ with tab3:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top restaurants from Yelp in your ideal neighborhood!")
+      st.markdown("### Here are some of the top restaurants from Yelp in your ideal zipcode!")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
@@ -575,7 +586,7 @@ with tab4:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top entertainments from Yelp in your ideal neighborhood!")
+      st.markdown("### Here are some of the top entertainments from Yelp in your ideal zipcode!")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
