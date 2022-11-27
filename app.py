@@ -83,8 +83,8 @@ def get_listing(zipcode):
 # get the list of food / fun business based on recommended zip (fixed - dataframe; 10 rows)
 @st.experimental_memo
 def get_yelp_data(zipcode):
-  query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 5".format(zipcode)
-  query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 5".format(zipcode)
+  query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 10".format(zipcode)
+  query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 10".format(zipcode)
   food = pd.read_sql(query1, engine)
   fun = pd.read_sql(query2, engine)
   return food, fun
@@ -174,17 +174,42 @@ def analysis_2(zipcode):
         round(avg(zlld.bathrooms_final),2) as avg_bt,
         round(avg(zlld.year_built_final),2) as avg_y,
         round(avg(zlld.SqFt_final),2) as avg_spft,
-        round(avg(zlld.price),2) as avg_price
+        round(avg(zlld.price),2) as avg_price,
+        round(cf.mean_household_income_dollars_final) as avg_inc,
+        round(avg(lef.elemntary_rating_final), 2) as el,
+        round(avg(lef.middle_rating_final), 2) as md,
+        round(avg(lef.high_rating_final), 2) as hi
 
     from census_final_2020  cf
         inner join yelp_enriched yp on cf.zipcode = yp.zipcode
-        inner join accessibility_enriched ae on yp.cbsa = ae.cbsa
-        inner join zipcode_level_listing_detail zlld on yp.cbsa = zlld.cbsa
+        inner join accessibility_enriched ae on yp.zipcode = ae.zipcode
+        inner join zipcode_level_listing_detail zlld on yp.zipcode = zlld.zipcode
+        inner join listings_enriched_final lef on cf.zipcode = lef.zipcode
+    
     where cf.zipcode = {zipcode}
+    
     group by cf.zipcode
     """.format(zipcode = zipcode)
   df = pd.read_sql(query, engine)
   
+  return df
+
+
+
+# analysis 3
+@st.experimental_memo
+def analysis_3(zipcode):
+  query = """
+  select
+    p.zipcode,
+    p.month,
+    p.avg_price_change*100 as avg_price
+  from price_change_by_zipcode_and_month p
+  where
+      p.zipcode = {zipcode}
+    """.format(zipcode = zipcode)
+  
+  df = pd.read_sql(query, engine)
   return df
 
 ### initiate cbsa / fixed dropdown options 
@@ -271,10 +296,94 @@ else:
     st.markdown("## Your ideal neighborhood is ... :thinking_face:")
 
 
-tab1, tab2, tab3, tab4 = st.tabs(["Housing", "Food", "Fun", "Neighborhood Analysis"])   
+tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])   
 
 #### 2) housing map display    
 with tab1: 
+  if st.session_state['zipcode'] != 0:
+    
+    with st.container():
+      a2 = analysis_2(st.session_state['zipcode'])
+      col1, col2, col3, col4 = st.columns(4)
+      
+      with col1:
+        st.metric("Majority Age Group", a2['val_age'][0].replace('_', ' ').title())
+        st.metric("Walkability Score", a2['ind_walk'][0])
+        
+      with col2:
+        st.metric("Avg. Household Income", "$" + str(a2['avg_inc'][0]))
+        st.metric("Traffic Density", a2['ind_trf'][0])
+        
+      with col3:
+        st.metric("Unemployment Rate", str(a2['pct_unemp'][0]*100) + "%")
+        st.metric("Yelp Avg. Score", a2['ind_yelp'][0])
+        
+      with col4:
+        st.metric("Avg. Travel Time to Work", str(a2["ind_com"][0]) + " min")
+        st.metric("Yelp Term Ratio", a2['pct_yelp'][0])
+        
+      st.metric("Majority Industry", a2["val_ind"][0])
+      
+    st.markdown("  ")
+    st.markdown("---")
+    st.markdown("  ")
+    
+    with st.container():
+      chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
+      
+      ##### display the chart
+      tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(["Unemployment", "Gender Diversity", "Commute Time", "Household Income", "WFH Rate", "Family Friendliness", "Median Age"])
+      with tab5:
+        st.plotly_chart(chart[0])
+      with tab6:
+        st.plotly_chart(chart[1])
+      with tab7: 
+        st.plotly_chart(chart[2])
+      with tab8:
+        st.plotly_chart(chart[3])
+      with tab9:
+        st.plotly_chart(chart[4])
+      with tab10:
+        st.plotly_chart(chart[5])
+      with tab11:
+        st.plotly_chart(chart[6])
+    
+    
+    st.markdown("  ")
+    st.markdown("---")
+    st.markdown("  ")
+    
+    with st.container():
+      a3 = analysis_3(st.session_state['zipcode'])
+      col5, col6, col7, col8, col9 = st.columns(5)
+      
+      with col5:
+        st.metric("Avg. Bedrooms", str(a2['avg_bd'][0]))
+        
+      with col6:
+        st.metric("Avg. Bathrooms", str(a2['avg_bt'][0]))
+        
+      with col7:
+        st.metric("Avg. YearBuilt", str(a2['avg_y'][0]))
+        
+      with col8:
+        st.metric("Avg. Sq Ft", str(a2['avg_spft'][0]))
+        
+      with col9:
+        st.metric("Avg. Price", str(a2['avg_price'][0]))
+    
+    a2
+    a3
+    
+  else:
+    ##### if no rec yet, display none
+    st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
+
+    
+      
+
+#### 3) food map display      
+with tab2:
   with st.container():
     if st.session_state['zipcode'] != 0:
       ##### get the housing data based on the predicted zipcode
@@ -306,10 +415,10 @@ with tab1:
     else:
       ##### if no rec yet, display default map
       st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
-      
 
-#### 3) food map display      
-with tab2:
+
+#### 4) fun map display      
+with tab3:
   with st.container():
     if st.session_state['zipcode'] != 0:
       ##### get the food data based on the predicted zipcode
@@ -335,8 +444,9 @@ with tab2:
       st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
 
 
-#### 4) fun map display      
-with tab3:
+
+#### 5) analysis display
+with tab4:
   with st.container():
     if st.session_state['zipcode'] != 0:
       ##### get the fun data based on the predicted zipcode
@@ -359,49 +469,8 @@ with tab3:
         
     else:
       ##### if no rec yet, display default map
-      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
-
-
-
-#### 5) analysis display
-with tab4:
-  if st.session_state['zipcode'] != 0:
-    
-    with st.container():
-      st.markdown("### Here are some of the top neighborhoods in the same metro area")
-      print(st.session_state['zipcode'])
-      a2 = analysis_2(st.session_state['zipcode'])
-      st.dataframe(a2)
-      
-    st.markdown("  ")
-    with st.container():
-      chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
-      
-      ##### display the chart
-      st.markdown("- Your neighborhood ranking compared to the other neighborhoods in the same metro area")
-      tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(["Unemployment", "Gender Diversity", "Commute Time", "Household Income", "WFH Rate", "Family Friendliness", "Median Age"])
-      with tab5:
-        st.plotly_chart(chart[0])
-      with tab6:
-        st.plotly_chart(chart[1])
-      with tab7: 
-        st.plotly_chart(chart[2])
-      with tab8:
-        st.plotly_chart(chart[3])
-      with tab9:
-        st.plotly_chart(chart[4])
-      with tab10:
-        st.plotly_chart(chart[5])
-      with tab11:
-        st.plotly_chart(chart[6])
-    
-
-  else:
-    ##### if no rec yet, display none
-    st.markdown("")
-
-
-
+      st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))\
+        
 
 def main():
   pass
