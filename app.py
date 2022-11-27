@@ -64,6 +64,15 @@ def get_listing(zipcode):
   listing = pd.read_sql(query, engine)
   return listing
 
+@st.cache(show_spinner=False, allow_output_mutation=True)
+def get_yelp_data(zipcode):
+  engine = create_engine(key.engine, echo=False)
+  query1 = "select * from yelp_zc where zipcode = {} and term = 'food' order by rating desc, review_count desc limit 5".format(zipcode)
+  df1 = pd.read_sql(query1, engine)
+  query2 = "select * from yelp_zc where zipcode = {} and term = 'fun' order by rating desc, review_count desc limit 5".format(zipcode)
+  df2 = pd.read_sql(query2, engine)
+  yd = pd.concat([df1, df2])
+  return yd
 
 @st.cache(show_spinner=False, allow_output_mutation=True)
 def get_county(zipcode):
@@ -183,14 +192,28 @@ with tab1:
       #             pickable=True,
       #         ),
       #     ],
-      # )) 
+      # ))
       
       st.map(ls[['lat', 'lon']])
       st.table(df.style.format({"SqFt": "{:.0f}", "# Bedroom": "{:.0f}", "# Bathroom": "{:.0f}", "Year Built": "{:.0f}"}))
       
       
 with tab2:
-  pass
+  yd = get_yelp_data(st.session_state['zipcode'])
+
+  yd.rename(
+    columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
+             "categories": "Business Categories"}, inplace=True)
+
+  with st.container():
+    st.markdown("### Here are some of the top businesses from Yelp in the food and fun categories in your ideal neighborhood!")
+
+    st.map(yd[['latitude', 'longitude']])
+    df = yd.copy()
+    df.drop('zipcode', inplace=True, axis=1, errors='ignore')
+    df.drop('latitude', inplace=True, axis=1, errors='ignore')
+    df.drop('longitude', inplace=True, axis=1, errors='ignore')
+    st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
 
 with tab3:
   pass
