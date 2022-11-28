@@ -95,9 +95,9 @@ def analysis_rank(zipcode, cbsa):
     # read table
     df = pd.read_sql('select * from census_final where cbsa={}'.format(cbsa), con=engine).astype({'zipcode': 'str', 'cbsa': 'str', 'years': 'str'})
     # to be analyzed columns
-    column = ['unemployment_rate_final', 'gender_diversity_index_final', 'mean_travel_time_to_work_minutes_final', 'mean_household_income_dollars_final', 'percent_population_work_from_home_final', 'percent_family_households_final', 'median_age_final']
+    column = ['unemployment_rate_final', 'total_population_final', 'mean_travel_time_to_work_minutes_final', 'mean_household_income_dollars_final', 'percent_population_work_from_home_final', 'percent_family_households_final', 'median_age_final']
     # column name change
-    rename = ['Unemployment Rate', 'Gender Diversity', 'Commute Time', 'Household Income', 'WFH Rate', 'Family-Friendliness', 'Median Age']
+    rename = ['Unemployment Rate', 'Total Population', 'Commute Time', 'Household Income', 'WFH Rate', 'Family-Friendliness', 'Median Age']
     
     # get the number of zipcodes in the cbsa
     all = len(df['zipcode'].unique().tolist())
@@ -445,7 +445,7 @@ with tab1:
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
       
       ##### display the chart
-      tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(["Unemployment", "Gender Diversity", "Commute Time", "Household Income", "WFH Rate", "Family Friendliness", "Median Age"])
+      tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(["Unemployment", "Total Population", "Commute Time", "Household Income", "WFH Rate", "Family Friendliness", "Median Age"])
       with tab5:
         st.plotly_chart(chart[0])
       with tab6:
