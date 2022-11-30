@@ -9,10 +9,10 @@ import inflect
 p = inflect.engine()
 
 ### main page layout
-st.set_page_config(page_title="Zipcode Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
-st.markdown("# :house_buildings: Zipcode Recommender")
+st.set_page_config(page_title="Zip code Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
+st.markdown("# :house_buildings: Zip code Recommender")
 st.markdown("### CSE 6242 Project - Team 110")
-st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best zipcode for you**! :dancer:")
+st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best Zip code for you**! :dancer:")
 st.markdown("")
 
 engine = create_engine(st.secrets["engine"], echo=False)
@@ -161,7 +161,7 @@ def analysis_2(zipcode):
         round(cf.percent_male_final,2) as pct_m,
         round(cf.percent_family_households_final,2) as pct_fam,
         round(cf.percent_family_households_final,2) as pct_non_fam,
-        cf.majority_age_group_final as val_age,
+        round(cf.median_age_final,2) as val_age,
         cf.majority_industry_final as val_ind,
         round(cf.unemployment_rate_final,2) as pct_unemp,
         round(cf.mean_travel_time_to_work_minutes_final,2) as ind_com,
@@ -204,7 +204,7 @@ def analysis_2_2(cbsa):
         round(cf.percent_male_final,2) as pct_m,
         round(cf.percent_family_households_final,2) as pct_fam,
         round(cf.percent_family_households_final,2) as pct_non_fam,
-        cf.majority_age_group_final as val_age,
+        round(cf.median_age_final,2) as val_age,
         cf.majority_industry_final as val_ind,
         round(cf.unemployment_rate_final,2) as pct_unemp,
         round(cf.mean_travel_time_to_work_minutes_final,2) as ind_com,
@@ -229,6 +229,7 @@ def analysis_2_2(cbsa):
         inner join listings_enriched_final lef on cf.zipcode = lef.zipcode
 
     where cf.cbsa = {cbsa}
+    group by cf.cbsa
     """.format(cbsa = cbsa)
   df = pd.read_sql(query, engine)
   
@@ -397,10 +398,10 @@ with st.sidebar.form("other_form"):
 #### 1) result zipcode display
 if st.session_state['zipcode'] != 0:
   with st.container():
-    st.markdown("## Your ideal zipcode is " + str(st.session_state["zipcode"]) + "! :tada:")
+    st.markdown("## Your ideal Zip code is " + str(st.session_state["zipcode"]) + "! :tada:")
 else:
   with st.container():
-    st.markdown("## Your ideal zipcode is ... :thinking_face:")
+    st.markdown("## Your ideal Zip code is ... :thinking_face:")
 
 
 tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])   
@@ -409,7 +410,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])
 with tab1: 
   if st.session_state['zipcode'] != 0:
     
-    st.info(f"Major Zipcode Index Compared to The Average in {st.session_state['cbsa_title']}")
+    st.info(f"Major Zip code Index Compared to The Average in {st.session_state['cbsa_title']}")
     with st.container():
       ##### run analysis functions
       a2 = analysis_2(st.session_state['zipcode'])
@@ -418,7 +419,7 @@ with tab1:
       
       # get the metric score cards for each zipcode compared to the average in the cbsa
       with col1:
-        st.metric("Majority Age Group", a2['val_age'][0].replace('_', ' ').title())
+        st.metric("Median Age", a2['val_age'][0])
         st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
         
       with col2:
@@ -438,7 +439,7 @@ with tab1:
     st.markdown("---")
     st.markdown("  ")
     
-    st.info(f"Zipcode Ranking Trend Compared to The Other Zipcodes in {st.session_state['cbsa_title']} (2016 - 2020)")
+    st.info(f"Zip code Ranking Trend Compared to The Other Zipcodes in {st.session_state['cbsa_title']} (2016 - 2020)")
     with st.container():
       ##### run analysis function
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
@@ -534,7 +535,7 @@ with tab2:
           ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
           
       ##### display the map
-      st.markdown("### Here are some available houses in your ideal zipcode!")
+      st.markdown("### Here are some available houses in your ideal Zip code!")
       st.map(ls[['lat', 'lon']])
       
       ##### display the table
@@ -557,7 +558,7 @@ with tab3:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top restaurants from Yelp in your ideal zipcode!")
+      st.markdown("### Here are some of the top restaurants from Yelp in your ideal Zip code!")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
@@ -585,7 +586,7 @@ with tab4:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top entertainments from Yelp in your ideal zipcode!")
+      st.markdown("### Here are some of the top entertainments from Yelp in your ideal Zip code!")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
