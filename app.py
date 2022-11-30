@@ -4,9 +4,6 @@ from sqlalchemy import create_engine
 import googlemaps
 import plotly.express as px
 import plotly.graph_objects as go
-import inflect
-
-p = inflect.engine()
 
 ### main page layout
 st.set_page_config(page_title="Zip code Recommender", page_icon=":house:", layout="wide", initial_sidebar_state="expanded")
@@ -127,7 +124,7 @@ def analysis_rank(zipcode, cbsa):
             rank_df['rank'] = rank_df[rename[i]].rank(ascending=False)
             
             rank = float(rank_df[rank_df['Zip Code'] == str(zipcode)]['rank'].values[0])
-            title.append(f'{rename[i]} Ranking: your zipcode {zipcode} is {p.ordinal(rank)} place out of {all} zipcodes in ' + df_analysis['Years'].unique()[j]
+            title.append(f'{rename[i]} Ranking: your Zip code {zipcode} ranks {int(rank)} out of {all} Zip code in ' + df_analysis['Years'].unique()[j]
             )
         
         # bar chart animated by each year    
@@ -139,12 +136,12 @@ def analysis_rank(zipcode, cbsa):
         fig.update_layout(
             title = title[0],
             xaxis = {'categoryorder':'total descending'},
-            yaxis_tickformat = '.3f',
+            yaxis_tickformat = '.2f',
             yaxis_range = [min*0.9999, max*1.001]
         )
-        if df_analysis.columns.str.contains("Rate").any() or df_analysis.columns.str.contains("Family-Friendliness").any():
+        if df_analysis.columns.str.contains("Rate").any() or df_analysis.columns.str.contains("Family").any():
             fig.update_layout(yaxis={'tickformat':',.2%'}, yaxis_range = [min*0.9999, max*1.001])
-        elif df_analysis.columns.str.contains("Commute Time").any() or df_analysis.columns.str.contains("Median Age").any() or df_analysis.columns.str.contains("Population").any():
+        elif df_analysis.columns.str.contains("Commute Time").any() or df_analysis.columns.str.contains("Median Age").any() or df_analysis.columns.str.contains("Population").any() or df_analysis.columns.str.contains("Income").any():
             fig.update_layout(yaxis={'tickformat':',.0f'}, yaxis_range = [min*0.9999, max*1.001])
         
 
@@ -162,10 +159,7 @@ def analysis_2(zipcode):
   query = """
     select
         cf.zipcode,
-        round(cf.percent_female_final,2) as pct_f,
-        round(cf.percent_male_final,2) as pct_m,
         round(cf.percent_family_households_final,2) as pct_fam,
-        round(cf.percent_family_households_final,2) as pct_non_fam,
         round(cf.median_age_final,2) as val_age,
         cf.majority_industry_final as val_ind,
         round(cf.unemployment_rate_final,2) as pct_unemp,
@@ -205,24 +199,21 @@ def analysis_2_2(cbsa):
   query = """
     select
         cf.cbsa,
-        round(cf.percent_female_final,2) as pct_f,
-        round(cf.percent_male_final,2) as pct_m,
         round(cf.percent_family_households_final,2) as pct_fam,
-        round(cf.percent_family_households_final,2) as pct_non_fam,
         round(cf.median_age_final,2) as val_age,
         cf.majority_industry_final as val_ind,
         round(cf.unemployment_rate_final,2) as pct_unemp,
         round(cf.mean_travel_time_to_work_minutes_final,2) as ind_com,
         round(ae.nat_walk_ind,2) as ind_walk,
-        round(ae.traffic_dens_ind,2) as ind_trf,
-        yp.average_score as ind_yelp,
-        yp.term_ratio as pct_yelp,
+        round(avg(ae.traffic_dens_ind),2) as ind_trf,
+        round(avg(yp.average_score), 2) as ind_yelp,
+        round(avg(yp.term_ratio), 2) as pct_yelp,
         round(avg(zlld.bedrooms_final),2) as avg_bd,
         round(avg(zlld.bathrooms_final),2) as avg_bt,
         round(avg(zlld.year_built_final),2) as avg_y,
         round(avg(zlld.SqFt_final),2) as avg_spft,
         round(avg(zlld.price),2) as avg_price,
-        round(cf.mean_household_income_dollars_final) as avg_inc,
+        round(avg(cf.mean_household_income_dollars_final), 2) as avg_inc,
         round(avg(lef.elemntary_rating_final), 2) as el,
         round(avg(lef.middle_rating_final), 2) as md,
         round(avg(lef.high_rating_final), 2) as hi
@@ -260,7 +251,7 @@ def analysis_3(zipcode):
 @st.experimental_memo(show_spinner=False)
 def analysis_4(zipcode, cbsa):
     # read table
-    df = pd.read_sql('SELECT zipcode, year as years, hpi, `change` FROM price_census where cbsa = {cbsa}'.format(cbsa = str(cbsa)), con=engine).astype({'zipcode': 'str'})
+    df = pd.read_sql('SELECT zipcode, year as years, hpi, (`change`/100) as `change` FROM price_census where cbsa = {cbsa}'.format(cbsa = str(cbsa)), con=engine).astype({'zipcode': 'str'})
     df = df.rename({'zipcode': 'Zip Code', 'years':'Years', 'hpi': 'HPI (Housing Price Index)', 'change': 'Price Change'}, axis=1)
     
     # get the number of zipcodes in the cbsa
@@ -293,17 +284,20 @@ def analysis_4(zipcode, cbsa):
     fig1.update_layout(
         title = "Housing Price Index by Zip Code",
         xaxis = {'categoryorder':'total descending'},
-        yaxis_tickformat = '.3f',
+        yaxis_tickformat = ',.0f',
         yaxis_range = [min*0.99999, max*1.001],
         xaxis_title = "Years",
         yaxis_title = "HPI (Housing Price Index)",
+        
     )
+            
+            
     
     fig2 = px.bar(df[df['Zip Code'] == str(zipcode)], x='Years', y='Price Change', color='Years', text_auto=True, color_continuous_scale=px.colors.sequential.Viridis)
     fig2.update_traces(textposition='outside')
     fig2.update_layout(
-        title = "Annual Housing Price Change (%) in Your Zipcode",
-        yaxis_tickformat = '.3f',
+        title = "Annual Housing Price Change in Your Zip code",
+        yaxis_tickformat = ',.2%',
         xaxis_title = "Years",
         yaxis_title = "Price Change (%)",
     )
@@ -404,7 +398,7 @@ with st.sidebar.form("other_form"):
 if st.session_state['zipcode'] != 0:
   with st.container():
     st.markdown("## Your ideal Zip code is " + str(st.session_state["zipcode"]) + "! :tada:")
-    st.image("https://cdn.codigo-postal.co/data/us/images/cp/" + st.session_state["zipcode"] + "webp")
+    st.image("https://cdn.codigo-postal.co/data/us/images/cp/" + st.session_state["zipcode"] + ".webp")
 else:
   with st.container():
     st.markdown("## Your ideal Zip code is ... :thinking_face:")
@@ -425,19 +419,19 @@ with tab1:
       
       # get the metric score cards for each zipcode compared to the average in the cbsa
       with col1:
-        st.metric("Median Age", a2['val_age'][0])
-        st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]), help="Characteristics of the built environment that influence the likelihood of walking being used as a mode of travel - The higher the value, the closer the area is to a city center/town center")
+        st.metric("Median Age", a2['val_age'][0], delta=int(a2['val_age'][0] - a2_2['val_age'][0]), delta_color="off")
+        st.metric("Walkability Score", a2['ind_walk'][0], delta=round(float(a2['ind_walk'][0] - a2_2['ind_walk'][0]), 2), help="Characteristics of the built environment that influence the likelihood of walking being used as a mode of travel - The higher the value, the closer the area is to a city center/town center")
         
       with col2:
-        st.metric("Avg. Household Income (USD)", a2['avg_inc'][0], delta=float(a2['avg_inc'][0] - a2_2['avg_inc'][0]))
-        st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse", help="The amount of traffic per unit of road length (range: 1 ~ 25) - The higher the values is, the more traffic an area has")
+        st.metric("Avg. Household Income (USD)", round(a2['avg_inc'][0],0), delta=round(float(a2['avg_inc'][0] - a2_2['avg_inc'][0]), 2))
+        st.metric("Traffic Density", a2['ind_trf'][0], delta = round(float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), 2), delta_color="inverse", help="The amount of traffic per unit of road length (range: 1 ~ 25) - The higher the values is, the more traffic an area has")
         
       with col3:
-        st.metric("Unemployment Rate (%)", round(a2['pct_unemp'][0]*100,2), delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
-        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2), help="Average of reviews weighted by rating - the higher number the better")
+        st.metric("Unemployment Rate (%)", round(a2['pct_unemp'][0]*100,2), delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100), 2), delta_color="inverse")
+        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]), 2), help="Average of reviews weighted by rating - the higher number the better")
         
       with col4:
-        st.metric("Avg. Travel Time to Work (Min)", a2["ind_com"][0], delta=float(a2["ind_com"][0] - a2_2["ind_com"][0]), delta_color="inverse")
+        st.metric("Avg. Travel Time to Work (Min)", a2["ind_com"][0], delta=round(float(a2["ind_com"][0] - a2_2["ind_com"][0]), 2), delta_color="inverse")
         st.metric("Yelp Term Ratio (%)", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2), help="Ratio of # of business scraped from yelp to # of listings")
         
       st.metric("Majority Industry", a2["val_ind"][0])
