@@ -535,7 +535,7 @@ with tab2:
           ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
           
       ##### display the map
-      st.markdown("### Here are some available houses in your ideal Zip code!")
+      st.info(f"Available for-sale Housing in your predicted Zip code")
       st.map(ls[['lat', 'lon']])
       
       ##### display the table
@@ -558,7 +558,7 @@ with tab3:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top restaurants from Yelp in your ideal Zip code!")
+      st.info(f"Top 10 Yelp Restaurants in your predicted Zip code")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
@@ -586,7 +586,7 @@ with tab4:
                 "categories": "Business Categories"}, inplace=True)
 
         ##### display the map
-      st.markdown("### Here are some of the top entertainments from Yelp in your ideal Zip code!")
+      st.info(f"Top 10 Yelp Entertainments in your predicted Zip code")
       st.map(yd[['latitude', 'longitude']])
       
       ##### display the table
