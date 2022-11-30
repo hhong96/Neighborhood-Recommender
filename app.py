@@ -96,7 +96,7 @@ def analysis_rank(zipcode, cbsa):
     # to be analyzed columns
     column = ['unemployment_rate_final', 'total_population_final', 'mean_travel_time_to_work_minutes_final', 'mean_household_income_dollars_final', 'percent_population_work_from_home_final', 'percent_family_households_final', 'median_age_final']
     # column name change
-    rename = ['Unemployment Rate', 'Total Population', 'Commute Time', 'Household Income', 'WFH Rate', 'Family-Friendliness', 'Median Age']
+    rename = ['Unemployment Rate (%)', 'Total Population', 'Commute Time (Min)', 'Household Income (USD)', 'WFH Rate (%)', 'Family-Friendliness (%)', 'Median Age']
     
     # get the number of zipcodes in the cbsa
     all = len(df['zipcode'].unique().tolist())
@@ -134,6 +134,7 @@ def analysis_rank(zipcode, cbsa):
         fig = px.bar(df_analysis, y=rename[i], x='Zip Code', animation_frame='Years', color='Zip Code'
                     , color_discrete_map=color_discrete_map, text_auto=True)
         
+
         # sort descending, format y axis and range
         fig.update_layout(
             title = title[0],
@@ -141,6 +142,10 @@ def analysis_rank(zipcode, cbsa):
             yaxis_tickformat = '.3f',
             yaxis_range = [min*0.9999, max*1.001]
         )
+        if df_analysis.columns.str.contains("Rate").any() or df_analysis.columns.str.contains("Family-Friendliness").any():
+            fig.update_layout(yaxis={'tickformat':',.2%'}, yaxis_range = [min*0.9999, max*1.001])
+        elif df_analysis.columns.str.contains("Commute Time").any() or df_analysis.columns.str.contains("Median Age").any() or df_analysis.columns.str.contains("Population").any():
+            fig.update_layout(yaxis={'tickformat':',.0f'}, yaxis_range = [min*0.9999, max*1.001])
         
 
         # append title for each year
@@ -399,6 +404,7 @@ with st.sidebar.form("other_form"):
 if st.session_state['zipcode'] != 0:
   with st.container():
     st.markdown("## Your ideal Zip code is " + str(st.session_state["zipcode"]) + "! :tada:")
+    st.image("https://cdn.codigo-postal.co/data/us/images/cp/" + st.session_state["zipcode"] + "webp")
 else:
   with st.container():
     st.markdown("## Your ideal Zip code is ... :thinking_face:")
@@ -410,7 +416,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])
 with tab1: 
   if st.session_state['zipcode'] != 0:
     
-    st.info(f"Major Zip code Index Compared to The Average in {st.session_state['cbsa_title']}")
+    st.info(f"Our specific Zip code level metrics with comparison to the overall {st.session_state['cbsa_title']}")
     with st.container():
       ##### run analysis functions
       a2 = analysis_2(st.session_state['zipcode'])
@@ -420,19 +426,19 @@ with tab1:
       # get the metric score cards for each zipcode compared to the average in the cbsa
       with col1:
         st.metric("Median Age", a2['val_age'][0])
-        st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]))
+        st.metric("Walkability Score", a2['ind_walk'][0], delta=float(a2['ind_walk'][0] - a2_2['ind_walk'][0]), help="Characteristics of the built environment that influence the likelihood of walking being used as a mode of travel - The higher the value, the closer the area is to a city center/town center")
         
       with col2:
-        st.metric("Avg. Household Income", a2['avg_inc'][0], delta=float(a2['avg_inc'][0] - a2_2['avg_inc'][0]))
-        st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse")
+        st.metric("Avg. Household Income (USD)", a2['avg_inc'][0], delta=float(a2['avg_inc'][0] - a2_2['avg_inc'][0]))
+        st.metric("Traffic Density", a2['ind_trf'][0], delta = float(a2['ind_trf'][0] - a2_2['ind_trf'][0]), delta_color="inverse", help="The amount of traffic per unit of road length (range: 1 ~ 25) - The higher the values is, the more traffic an area has")
         
       with col3:
-        st.metric("Unemployment Rate", round(a2['pct_unemp'][0]*100,2), delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
-        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2), help="average of reviews weighted by rating - the higher number the better")
+        st.metric("Unemployment Rate (%)", round(a2['pct_unemp'][0]*100,2), delta=round(float((a2['pct_unemp'][0] - a2_2['pct_unemp'][0])*100),2), delta_color="inverse")
+        st.metric("Yelp Avg. Score", a2['ind_yelp'][0], delta=round(float(a2['ind_yelp'][0] - a2_2['ind_yelp'][0]),2), help="Average of reviews weighted by rating - the higher number the better")
         
       with col4:
-        st.metric("Avg. Travel Time to Work", a2["ind_com"][0], delta=float(a2["ind_com"][0] - a2_2["ind_com"][0]), delta_color="inverse")
-        st.metric("Yelp Term Ratio", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2), help="ratio of # of business scraped from yelp to # of listings")
+        st.metric("Avg. Travel Time to Work (Min)", a2["ind_com"][0], delta=float(a2["ind_com"][0] - a2_2["ind_com"][0]), delta_color="inverse")
+        st.metric("Yelp Term Ratio (%)", a2['pct_yelp'][0], delta=round(float(a2['pct_yelp'][0] - a2_2['pct_yelp'][0]),2), help="Ratio of # of business scraped from yelp to # of listings")
         
       st.metric("Majority Industry", a2["val_ind"][0])
       
@@ -467,7 +473,7 @@ with tab1:
     st.markdown("  ")
     
     
-    st.info(f"Housing-Related Index Compared to The Average in {st.session_state['cbsa_title']}")
+    st.info(f"Your specific Zip code Housing-Related metrics with comparison to the overall {st.session_state['cbsa_title']}")
     with st.container():
       ###### run analysis function
       a3 = analysis_3(st.session_state['zipcode'])
