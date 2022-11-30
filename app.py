@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
 import googlemaps
-import util.key as key
 import plotly.express as px
 import plotly.graph_objects as go
 import inflect
@@ -16,8 +15,8 @@ st.markdown("### CSE 6242 Project - Team 110")
 st.markdown("> Select an area you want to live in to get started, and fill out your preference on housing and your demographic information - We will find **the best zipcode for you**! :dancer:")
 st.markdown("")
 
-engine = create_engine(key.engine, echo=False)
-gmaps_key = googlemaps.Client(key=key.api_key)
+engine = create_engine(st.secrets["engine"], echo=False)
+gmaps_key = googlemaps.Client(key=st.secrets["api_key"])
 
 ### data read functions 
 # get the list of cbsa (fixed - dataframe)
