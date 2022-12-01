@@ -410,7 +410,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Housing", "Food", "Fun"])
 with tab1: 
   if st.session_state['zipcode'] != 0:
     
-    st.info(f"Our specific Zip code level metrics with comparison to the overall {st.session_state['cbsa_title']}")
+    st.info(f"Your specific Zip code level metrics with comparison to the overall {st.session_state['cbsa_title']}")
     with st.container():
       ##### run analysis functions
       a2 = analysis_2(st.session_state['zipcode'])
