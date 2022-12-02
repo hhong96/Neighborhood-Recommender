@@ -231,22 +231,6 @@ def analysis_2_2(cbsa):
   
   return df
 
-# analysis 3
-@st.experimental_memo(show_spinner=False)
-def analysis_3(zipcode):
-  query = """
-  select
-    p.zipcode,
-    p.month,
-    p.avg_price_change*100 as avg_price
-  from price_change_by_zipcode_and_month p
-  where
-      p.zipcode = {zipcode}
-    """.format(zipcode = zipcode)
-  
-  df = pd.read_sql(query, engine)
-  return df
-
 # analysis 4
 @st.experimental_memo(show_spinner=False)
 def analysis_4(zipcode, cbsa):
@@ -470,7 +454,6 @@ with tab1:
     st.info(f"Your specific Zip code Housing-Related metrics with comparison to the overall {st.session_state['cbsa_title']}")
     with st.container():
       ###### run analysis function
-      a3 = analysis_3(st.session_state['zipcode'])
       col5, col6, col7, col8 = st.columns(4)
       
       ###### get the metric score cards for housing compared to the average in the cbsa
