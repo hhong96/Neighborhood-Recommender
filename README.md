@@ -27,15 +27,15 @@ This app recommend the best neighborhood to live in based on user input related 
 
 - Create a virtual environment for working with Python
 
-   `python3 -m venv neighborhood-recommender`
+   ```python3 -m venv neighborhood-recommender```
 
 - Activate your virtual environment
 
-   `cd neighborhood-recommender && source bin/activate`
+   ```cd neighborhood-recommender && source bin/activate```
 
 - Within the activated virtual environment install dependencies
 
-  `pip3 install -r requirements.txt`
+  ```pip3 install -r requirements.txt```
 
 - create `.streamlit` folder in the main directory
 
