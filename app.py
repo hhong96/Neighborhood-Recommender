@@ -423,7 +423,7 @@ with tab1:
     st.markdown("---")
     st.markdown("  ")
     
-    st.info(f"Zip code Ranking Trend Compared to The Other Zipcodes in {st.session_state['cbsa_title']} (2016 - 2020)")
+    st.info(f"Zip code Ranking Trend Compared to The Other Zip codes in {st.session_state['cbsa_title']} (2016 - 2020)")
     with st.container():
       ##### run analysis function
       chart = analysis_rank(st.session_state['zipcode'], st.session_state['cbsa']) 
@@ -476,7 +476,7 @@ with tab1:
     st.markdown("  ")
     st.markdown("---")
     
-    st.info(f"Housing Price Change Compared to The Other Zipcodes in {st.session_state['cbsa_title']}")
+    st.info(f"Housing Price Change Compared to The Other Zip codes in {st.session_state['cbsa_title']}")
     with st.container():
       tab12, tab13 = st.tabs(["Price", "HPI (Housing Price Index)"])
       ###### run analysis function
