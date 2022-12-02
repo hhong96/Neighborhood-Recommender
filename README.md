@@ -37,9 +37,9 @@ This app recommend the best neighborhood to live in based on user input related 
 
   ```pip3 install -r requirements.txt```
 
-- create `.streamlit` folder in the main directory
+- Create `.streamlit` folder in the main directory
 
-- create `secret.toml` file within the folder and input your database connection string & api_key as variable names below
+- Create `secret.toml` file within the folder and input your database connection string & api_key setting variable names as below
 
   ```
   engine = {your database instance connection string}
