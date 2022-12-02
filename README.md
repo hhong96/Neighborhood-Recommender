@@ -46,7 +46,7 @@ This app recommend the best neighborhood to live in based on user input related 
   api_key = {your google Geocoding API}
   ```
 
-  *this project was developed with MySQL AWS RDS and Google Geocoding API. It is completely replicable within free tier license from both services. -- AWS provides up to 20GB storage, and GCP provides $300 credit within their free tier license. For more information on how to obtain free tier license, see the link in 'API' below.*
+  *This project was developed with MySQL AWS RDS and Google Geocoding API using free tier account. AWS RDS provides up to 20GB storage for 1 year, and GCP provides $300 credit in free tier for new users. For more information on how to obtain license, see the link in 'API' below.*
 
 
 - Run the app with `streamlit run app.py` in the `streamlit-example` directory
