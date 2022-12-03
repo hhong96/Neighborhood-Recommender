@@ -2,7 +2,7 @@
 # Neighborhood Recommender System :house:
 
 This app recommend the best neighborhood to live in based on user input related to quality of living factors. It is deployed using Streamlit.
-[Click](https://hhong96-neighborhood-recommender-app-6szh3p.streamlit.app) to access the app.
+[Click](https://hhong96-neighborhood-recommender-app-6szh3p.streamlit.app) to access the hosted app.
 
 
 
@@ -20,6 +20,8 @@ This app recommend the best neighborhood to live in based on user input related 
 - Yelp business reviews from Yelp API
 
 - Smart Location Mapping from United States Environment Protection Agency
+
+- Housing Price Index datasets downloaded from the Federal Housing Finance Agency
 
 
 
