@@ -497,61 +497,61 @@ with tab1:
 #### 3) food map display      
 with tab2:
   with st.container():
-    if st.session_state['zipcode'] != 0:
-      ##### get the housing data based on the predicted zipcode
-      ls = get_listing(st.session_state['zipcode'])
-      df = ls.rename(columns={"streetAddress": "Street Address", "sqft": "Sqft", "hometype_cd": "Home Type", "bedrooms": "Bedroom", "bathrooms": "Bathroom", "yearbuilt": "Year Built"})
+    # if st.session_state['zipcode'] != 0:
+    #   ##### get the housing data based on the predicted zipcode
+    #   ls = get_listing(st.session_state['zipcode'])
+    #   df = ls.rename(columns={"streetAddress": "Street Address", "sqft": "Sqft", "hometype_cd": "Home Type", "bedrooms": "Bedroom", "bathrooms": "Bathroom", "yearbuilt": "Year Built"})
       
-      ls['address'] = ls.apply(lambda x: '%s, %s, %s, %s' % (x['streetAddress'], x['city'], x['state'], x['zipcode']), axis=1)
-      ls['lat'] = 0
-      ls['lon'] = 0
+    #   ls['address'] = ls.apply(lambda x: '%s, %s, %s, %s' % (x['streetAddress'], x['city'], x['state'], x['zipcode']), axis=1)
+    #   ls['lat'] = 0
+    #   ls['lon'] = 0
       
-      ##### get lat, lon for each listing
-      for i in range(len(ls)):
-        g = gmaps_key.geocode(ls['address'][i])
+    #   ##### get lat, lon for each listing
+    #   for i in range(len(ls)):
+    #     g = gmaps_key.geocode(ls['address'][i])
         
-        if g[0]["geometry"]["location"]["lat"] == 0:
-          pass
+    #     if g[0]["geometry"]["location"]["lat"] == 0:
+    #       pass
         
-        else:
-          ls['lat'][i] = g[0]["geometry"]["location"]["lat"]
-          ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
+    #     else:
+    #       ls['lat'][i] = g[0]["geometry"]["location"]["lat"]
+    #       ls['lon'][i] = g[0]["geometry"]["location"]["lng"]
           
-      ##### display the map
-      st.info(f"Available for-sale Housing in your predicted Zip code")
-      st.map(ls[['lat', 'lon']])
+    #   ##### display the map
+    #   st.info(f"Available for-sale Housing in your predicted Zip code")
+    #   st.map(ls[['lat', 'lon']])
       
-      ##### display the table
-      st.table(df.style.format({"SqFt": "{:.0f}", "Bedroom": "{:.0f}", "Bathroom": "{:.0f}", "Year Built": "{:.0f}"}))
+    #   ##### display the table
+    #   st.table(df.style.format({"SqFt": "{:.0f}", "Bedroom": "{:.0f}", "Bathroom": "{:.0f}", "Year Built": "{:.0f}"}))
           
-    else:
+    # else:
       ##### if no rec yet, display default map
       st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
 
 
 #### 4) fun map display      
 with tab3:
-  with st.container():
-    if st.session_state['zipcode'] != 0:
-      ##### get the food data based on the predicted zipcode
-      yd = get_yelp_data(st.session_state['zipcode'])[0]
+  # with st.container():
+  #   if st.session_state['zipcode'] != 0:
+  #     ##### get the food data based on the predicted zipcode
+  #     yd = get_yelp_data(st.session_state['zipcode'])[0]
 
-      yd.rename(
-        columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
-                "categories": "Business Categories"}, inplace=True)
+  #     yd.rename(
+  #       columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
+  #               "categories": "Business Categories"}, inplace=True)
 
-        ##### display the map
-      st.info(f"Top 10 Yelp Restaurants in your predicted Zip code")
-      st.map(yd[['latitude', 'longitude']])
+  #       ##### display the map
+  #     st.info(f"Top 10 Yelp Restaurants in your predicted Zip code")
+  #     st.map(yd[['latitude', 'longitude']])
       
-      ##### display the table
-      df = yd.copy()
-      df.drop('zipcode', inplace=True, axis=1, errors='ignore')
-      df.drop('latitude', inplace=True, axis=1, errors='ignore')
-      df.drop('longitude', inplace=True, axis=1, errors='ignore')
-      st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
+  #     ##### display the table
+  #     df = yd.copy()
+  #     df.drop('zipcode', inplace=True, axis=1, errors='ignore')
+  #     df.drop('latitude', inplace=True, axis=1, errors='ignore')
+  #     df.drop('longitude', inplace=True, axis=1, errors='ignore')
+  #     st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
         
-    else:
+  #   else:
       ##### if no rec yet, display default map
       st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))
 
@@ -560,26 +560,26 @@ with tab3:
 #### 5) analysis display
 with tab4:
   with st.container():
-    if st.session_state['zipcode'] != 0:
-      ##### get the fun data based on the predicted zipcode
-      yd = get_yelp_data(st.session_state['zipcode'])[1]
+    # if st.session_state['zipcode'] != 0:
+    #   ##### get the fun data based on the predicted zipcode
+    #   yd = get_yelp_data(st.session_state['zipcode'])[1]
 
-      yd.rename(
-        columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
-                "categories": "Business Categories"}, inplace=True)
+    #   yd.rename(
+    #     columns={"term": "Yelp Category", "name": "Name", "rating": "Rating", "review_count": "Review Count",
+    #             "categories": "Business Categories"}, inplace=True)
 
-        ##### display the map
-      st.info(f"Top 10 Yelp Entertainments in your predicted Zip code")
-      st.map(yd[['latitude', 'longitude']])
+    #     ##### display the map
+    #   st.info(f"Top 10 Yelp Entertainments in your predicted Zip code")
+    #   st.map(yd[['latitude', 'longitude']])
       
-      ##### display the table
-      df = yd.copy()
-      df.drop('zipcode', inplace=True, axis=1, errors='ignore')
-      df.drop('latitude', inplace=True, axis=1, errors='ignore')
-      df.drop('longitude', inplace=True, axis=1, errors='ignore')
-      st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
+    #   ##### display the table
+    #   df = yd.copy()
+    #   df.drop('zipcode', inplace=True, axis=1, errors='ignore')
+    #   df.drop('latitude', inplace=True, axis=1, errors='ignore')
+    #   df.drop('longitude', inplace=True, axis=1, errors='ignore')
+    #   st.table(df.style.format({"Review Count": "{:.0f}", "Rating": "{:.0f}"}))
         
-    else:
+    # else:
       ##### if no rec yet, display default map
       st.map(pd.DataFrame({'lat': [33.7722], 'lon': [-84.3902]}))\
         
